@@ -32,6 +32,76 @@ The API serves `POST /v1/authorizations` (idempotent authorization + risk decisi
    decided policy-only, `risk_score` is `null`, and an ERROR is logged. Model failures
    never 500 the authorization request.
 
+### Fast path vs slow path
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant A as API
+    participant D as Policy + Model
+    participant L as Ledger (PG)
+    participant T as Temporal
+    participant W as Worker
+    participant R as Human reviewer
+
+    C->>A: POST /v1/authorizations (sync)
+    A->>D: hard rules, then ML score
+    alt fast path: approve
+        D-->>A: approve
+        A->>L: post hold (same transaction)
+        A->>T: start HoldExpiryWorkflow (fire & forget)
+        A-->>C: 200 {"decision": "approve"}
+    else fast path: decline
+        D-->>A: decline
+        A-->>C: 200 {"decision": "decline"}
+    else slow path: review
+        D-->>A: review
+        A->>T: start ReviewWorkflow (non-blocking)
+        A-->>C: 200 {"decision": "review"}
+        T->>W: workflow task
+        W->>W: wait for signal or 24h timer
+        R->>A: POST /v1/authorizations/<id>/review-decision
+        A->>T: signal reviewer_decision
+        W->>L: post hold / finalize decline (idempotent activities)
+        R->>A: GET /v1/authorizations/<id>/review-status
+        A->>T: query get_state
+        A-->>R: {"status": "approved"|"declined"|...}
+    end
+```
+
+## Temporal (durable path)
+
+Two workflows run on task queue `cardguard-risk` (`workflows/`):
+
+- **`ReviewWorkflow(authorization_id, timeout_seconds)`** — started fire-and-forget
+  whenever the decision is `review`. It waits for the `reviewer_decision(approve,
+  reviewer_id, note)` signal; on approve it posts the ledger hold, on decline it
+  finalizes the authorization as declined, and if no signal arrives within the timeout
+  (24h by default, configurable via `CARDGUARD_REVIEW_TIMEOUT_SECONDS`) it auto-declines
+  with `REVIEW_TIMEOUT`. The `get_state` query exposes the current status.
+- **`HoldExpiryWorkflow(authorization_id, expires_at)`** — durable timer until the
+  hold's expiry; releases the hold and marks the authorization `expired` if it was
+  never captured, and exits as a no-op if it was captured or reversed.
+
+Activities (`workflows/activities.py`) are idempotent, keyed by authorization_id, and
+run with a retry policy (1s initial interval, 2.0 backoff, max 5 attempts,
+`ValidationError` non-retryable). Because Temporal persists workflow state server-side,
+killing the worker mid-workflow is safe: a restarted worker resumes exactly where the
+crash happened, and replayed activities never double-post (the ledger's unique
+constraint backs this up).
+
+### Crash-durability demo
+
+```sh
+make demo   # runs scripts/demo_crash_recovery.sh
+```
+
+The demo routes an authorization to `review`, kills the worker container mid-workflow
+with `docker compose kill worker`, restarts it, sends the approve signal, and shows the
+workflow completing with exactly one hold posting in the ledger.
+
+Temporal UI: http://localhost:8080
+
 ## Data
 
 The Kaggle credit-card-fraud and IEEE-CIS datasets require authenticated download and

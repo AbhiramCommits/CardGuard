@@ -9,6 +9,9 @@ class Config:
     MODEL_PATH = os.environ.get(
         "CARDGUARD_MODEL_PATH", "ml/artifacts/model_v1.joblib"
     )
+    REVIEW_TIMEOUT_SECONDS = int(
+        os.environ.get("CARDGUARD_REVIEW_TIMEOUT_SECONDS", "86400")
+    )
     TESTING = False
     DEBUG = False
 

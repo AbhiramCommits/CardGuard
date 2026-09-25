@@ -1,12 +1,12 @@
 import logging
 import os
 
-from flask import Flask
-
-from app.db import make_engine, make_session_factory
-
 
 def create_app(config_object=None):
+    from flask import Flask
+
+    from app.db import make_engine, make_session_factory
+
     app = Flask(__name__)
     if config_object is None:
         config_object = os.environ.get("APP_CONFIG", "app.config.Config")

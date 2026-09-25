@@ -25,6 +25,14 @@ from app.observability import StageTimer
 from app.risk.features import build_features
 from app.risk.model import risk_model
 from app.risk.policy import PolicyContext, ReasonCode, evaluate_policy
+from app.temporal import (
+    TemporalUnavailableError,
+    WorkflowNotFoundError,
+    query_review_state,
+    signal_review_decision,
+    start_hold_expiry_workflow,
+    start_review_workflow,
+)
 
 bp = Blueprint("authorizations_v1", __name__)
 
@@ -293,6 +301,18 @@ def create_authorization():
                     409,
                 )
             return _log_and_return(timer, _replay_response(record), replay=True)
+        if final_decision == "review":
+            start_review_workflow(
+                authorization.id,
+                str(authorization.public_id),
+                current_app.config["REVIEW_TIMEOUT_SECONDS"],
+            )
+        elif final_decision == "approve":
+            start_hold_expiry_workflow(
+                authorization.id,
+                str(authorization.public_id),
+                authorization.expires_at.timestamp(),
+            )
         return _log_and_return(timer, jsonify(response_body), 200)
 
 
@@ -472,3 +492,33 @@ def reverse_authorization(authorization_id):
                 "reversed_amount_cents": reversed_amount,
             }
         ), 200
+
+
+@bp.post("/<uuid:authorization_id>/review-decision")
+def review_decision(authorization_id):
+    payload = request.get_json(silent=True) or {}
+    decision = payload.get("decision")
+    if decision not in ("approve", "decline"):
+        return jsonify({"error": "decision must be 'approve' or 'decline'"}), 400
+    reviewer_id = str(payload.get("reviewer_id") or "unknown")
+    note = str(payload.get("note") or "")
+    try:
+        signal_review_decision(
+            str(authorization_id), decision == "approve", reviewer_id, note
+        )
+    except WorkflowNotFoundError:
+        return jsonify({"error": "review workflow not found"}), 404
+    except TemporalUnavailableError:
+        return jsonify({"error": "temporal unavailable"}), 503
+    return jsonify({"status": "signal_sent"}), 202
+
+
+@bp.get("/<uuid:authorization_id>/review-status")
+def review_status(authorization_id):
+    try:
+        state = query_review_state(str(authorization_id))
+    except WorkflowNotFoundError:
+        return jsonify({"error": "review workflow not found"}), 404
+    except TemporalUnavailableError:
+        return jsonify({"error": "temporal unavailable"}), 503
+    return jsonify(state)

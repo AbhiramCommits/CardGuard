@@ -1,4 +1,4 @@
-.PHONY: up down logs migrate migrate-new seed test data train psql
+.PHONY: up down logs migrate migrate-new seed test data train demo psql
 
 m ?= auto
 
@@ -29,6 +29,9 @@ data:
 
 train:
 	uv run python ml/train.py
+
+demo:
+	bash scripts/demo_crash_recovery.sh
 
 psql:
 	docker compose exec postgres psql -U cardguard -d cardguard
