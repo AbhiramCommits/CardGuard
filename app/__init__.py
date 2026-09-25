@@ -1,8 +1,14 @@
+from __future__ import annotations
+
 import logging
 import os
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from flask import Flask
 
 
-def create_app(config_object=None):
+def create_app(config_object: str | type[object] | None = None) -> Flask:
     from flask import Flask
 
     from app.db import make_engine, make_session_factory
@@ -29,7 +35,7 @@ def create_app(config_object=None):
     return app
 
 
-def _configure_logging():
+def _configure_logging() -> None:
     logger = logging.getLogger("cardguard")
     if logger.handlers:
         return

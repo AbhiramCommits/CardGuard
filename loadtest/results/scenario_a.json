@@ -1,0 +1,21 @@
+{
+  "scenario": "scenario_a",
+  "latency_ms": {
+    "p50": 19.3,
+    "p95": 80.87,
+    "p99": 228.2,
+    "max": 505.05
+  },
+  "requests": 3549,
+  "rps": 35.488728,
+  "error_rate": 0.0002,
+  "failed": 1,
+  "replays": null,
+  "dropped_iterations": 0,
+  "decision_mix": {
+    "approved": 2117,
+    "declined": 918,
+    "pending_review": 513
+  },
+  "description": "Steady-state mixed approve/decline/review, ramp to 50 rps sustained for 60s. Stack: gunicorn 4 workers x 8 threads, PostgreSQL 16, LightGBM scoring in-process."
+}

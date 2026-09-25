@@ -9,7 +9,6 @@ from app.config import TestingConfig
 from app.models import Authorization, AuthorizationStatus
 from app.risk.features import FEATURE_NAMES, FEATURE_SCHEMA_VERSION
 from app.risk.model import RiskModel, bucket, risk_model
-
 from tests.test_authorization_api import _payload, _post, _postings
 
 
@@ -67,7 +66,11 @@ def test_decision_reasons_per_bucket(tmp_path):
 
     model = RiskModel(str(_artifact(tmp_path, proba=0.9)))
     model.load()
-    assert model.decide(_features()) == ("decline", "MODEL_HIGH_RISK", pytest.approx(0.9))
+    assert model.decide(_features()) == (
+        "decline",
+        "MODEL_HIGH_RISK",
+        pytest.approx(0.9),
+    )
 
 
 def test_missing_model_falls_back():

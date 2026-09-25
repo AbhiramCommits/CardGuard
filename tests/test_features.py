@@ -1,5 +1,5 @@
 import math
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -18,13 +18,18 @@ def _row(ts, amount, mcc, merchant):
 
 
 def test_no_leakage_future_rows_do_not_change_features():
-    base = datetime(2026, 1, 15, 12, 0, tzinfo=timezone.utc)
+    base = datetime(2026, 1, 15, 12, 0, tzinfo=UTC)
     history = [
         _row(base - timedelta(hours=10), 10_000, "5411", "GROCERY A"),
         _row(base - timedelta(hours=3), 12_000, "5411", "GROCERY A"),
         _row(base - timedelta(hours=1), 9_000, "5812", "CAFE B"),
     ]
-    tx = {"ts": base, "amount_cents": 11_000, "mcc": "5411", "merchant_name": "GROCERY A"}
+    tx = {
+        "ts": base,
+        "amount_cents": 11_000,
+        "mcc": "5411",
+        "merchant_name": "GROCERY A",
+    }
     before = build_features(tx, history)
 
     future = [
@@ -45,7 +50,7 @@ def test_no_leakage_future_rows_do_not_change_features():
 
 def test_empty_history_defaults():
     tx = {
-        "ts": datetime(2026, 1, 1, 13, 30, tzinfo=timezone.utc),
+        "ts": datetime(2026, 1, 1, 13, 30, tzinfo=UTC),
         "amount_cents": 5_000,
         "mcc": "5411",
         "merchant_name": "NEW SHOP",
@@ -64,7 +69,7 @@ def test_empty_history_defaults():
 
 def test_batch_matches_single_builder():
     rng = np.random.default_rng(7)
-    base = datetime(2026, 2, 1, tzinfo=timezone.utc)
+    base = datetime(2026, 2, 1, tzinfo=UTC)
     rows = []
     for card in ["card_a", "card_b", "card_c"]:
         t = base

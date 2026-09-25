@@ -1,10 +1,9 @@
 import asyncio
 import os
 import uuid as uuid_module
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-import pytest
 import pytest_asyncio
 from sqlalchemy import select
 from temporalio.testing import WorkflowEnvironment
@@ -17,13 +16,16 @@ from app.models import (
     AuthorizationStatus,
     EntryType,
     LedgerEntry,
-    LedgerPosting,
     SpendPolicy,
 )
 from tests.test_authorization_api import _payload, _post, _postings
 from workflows import HoldExpiryWorkflow, ReviewWorkflow
 from workflows import activities as activities_module
-from workflows.activities import finalize_decline, post_review_hold, release_expired_hold
+from workflows.activities import (
+    finalize_decline,
+    post_review_hold,
+    release_expired_hold,
+)
 
 TASK_QUEUE = "cardguard-risk"
 
@@ -85,7 +87,9 @@ async def test_signal_approve_posts_hold(temporal, session, card):
     state = await handle.query(ReviewWorkflow.get_state)
     assert state.status == "pending_review"
 
-    await handle.signal(ReviewWorkflow.reviewer_decision, args=[True, "alice", "looks fine"])
+    await handle.signal(
+        ReviewWorkflow.reviewer_decision, args=[True, "alice", "looks fine"]
+    )
     assert await handle.result() == "APPROVED"
 
     session.expire_all()
@@ -105,7 +109,9 @@ async def test_signal_decline_finalizes(temporal, session, card):
         id=f"review-{authorization.public_id}",
         task_queue=TASK_QUEUE,
     )
-    await handle.signal(ReviewWorkflow.reviewer_decision, args=[False, "bob", "suspicious"])
+    await handle.signal(
+        ReviewWorkflow.reviewer_decision, args=[False, "bob", "suspicious"]
+    )
     assert await handle.result() == "DECLINED"
 
     state = await handle.query(ReviewWorkflow.get_state)
@@ -152,8 +158,10 @@ async def test_hold_expiry_releases(temporal, session, card):
     )
     session.add(authorization)
     session.flush()
-    post_hold(session, authorization.id, 8_000, idempotency_key=f"hold-{authorization.id}")
-    expires_at = datetime.now(timezone.utc).timestamp() + 2
+    post_hold(
+        session, authorization.id, 8_000, idempotency_key=f"hold-{authorization.id}"
+    )
+    expires_at = datetime.now(UTC).timestamp() + 2
 
     handle = await temporal.client.start_workflow(
         HoldExpiryWorkflow.run,
@@ -182,8 +190,12 @@ async def test_hold_expiry_noop_when_captured(temporal, session, card):
     )
     session.add(authorization)
     session.flush()
-    post_hold(session, authorization.id, 8_000, idempotency_key=f"hold-{authorization.id}")
-    post_capture(session, authorization.id, 8_000, idempotency_key=f"capture-{authorization.id}")
+    post_hold(
+        session, authorization.id, 8_000, idempotency_key=f"hold-{authorization.id}"
+    )
+    post_capture(
+        session, authorization.id, 8_000, idempotency_key=f"capture-{authorization.id}"
+    )
     session.expire_all()
     authorization = session.get(Authorization, authorization.id)
     authorization.status = AuthorizationStatus.captured
@@ -191,7 +203,7 @@ async def test_hold_expiry_noop_when_captured(temporal, session, card):
 
     handle = await temporal.client.start_workflow(
         HoldExpiryWorkflow.run,
-        args=[authorization.id, datetime.now(timezone.utc).timestamp() + 2],
+        args=[authorization.id, datetime.now(UTC).timestamp() + 2],
         id=f"hold-expiry-{authorization.public_id}",
         task_queue=TASK_QUEUE,
     )
@@ -214,7 +226,9 @@ async def test_activity_retry_no_double_post(temporal, session, card):
         id=f"review-{authorization.public_id}",
         task_queue=TASK_QUEUE,
     )
-    await handle.signal(ReviewWorkflow.reviewer_decision, args=[True, "carol", "retry me"])
+    await handle.signal(
+        ReviewWorkflow.reviewer_decision, args=[True, "carol", "retry me"]
+    )
     assert await handle.result() == "APPROVED"
 
     postings = _postings(session, authorization.id)
@@ -278,9 +292,7 @@ async def test_review_decision_endpoints(temporal, app, session, card):
 
     session.expire_all()
     authorization = session.scalar(
-        select(Authorization).where(
-            Authorization.public_id == UUID(authorization_id)
-        )
+        select(Authorization).where(Authorization.public_id == UUID(authorization_id))
     )
     assert authorization.status == AuthorizationStatus.approved
     assert len(_postings(session, authorization.id)) == 1

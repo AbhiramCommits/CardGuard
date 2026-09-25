@@ -6,9 +6,7 @@ class Config:
         "DATABASE_URL",
         "postgresql+psycopg://cardguard:cardguard@localhost:5432/cardguard",
     )
-    MODEL_PATH = os.environ.get(
-        "CARDGUARD_MODEL_PATH", "ml/artifacts/model_v1.joblib"
-    )
+    MODEL_PATH = os.environ.get("CARDGUARD_MODEL_PATH", "ml/artifacts/model_v1.joblib")
     REVIEW_TIMEOUT_SECONDS = int(
         os.environ.get("CARDGUARD_REVIEW_TIMEOUT_SECONDS", "86400")
     )

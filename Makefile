@@ -1,4 +1,4 @@
-.PHONY: up down logs migrate migrate-new seed test data train demo psql
+.PHONY: up down logs migrate migrate-new seed test data train demo loadtest psql
 
 m ?= auto
 
@@ -32,6 +32,14 @@ train:
 
 demo:
 	bash scripts/demo_crash_recovery.sh
+
+loadtest:
+	uv run python loadtest/setup.py
+	k6 run loadtest/scenario_a.js
+	uv run python loadtest/summarize.py scenario_a
+	uv run python loadtest/setup.py
+	k6 run loadtest/scenario_b.js
+	uv run python loadtest/summarize.py scenario_b
 
 psql:
 	docker compose exec postgres psql -U cardguard -d cardguard

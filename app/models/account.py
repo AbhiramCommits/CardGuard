@@ -26,10 +26,14 @@ class Account(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     company_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("company.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("company.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     account_type: Mapped[AccountType] = mapped_column(
-        Enum(AccountType, name="account_type", values_callable=enum_values), nullable=False
+        Enum(AccountType, name="account_type", values_callable=enum_values),
+        nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

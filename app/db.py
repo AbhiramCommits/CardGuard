@@ -1,9 +1,11 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import Engine, create_engine
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
 
-def make_engine(url, echo=False, pool_size=10, max_overflow=20):
+def make_engine(
+    url: str, echo: bool = False, pool_size: int = 10, max_overflow: int = 20
+) -> Engine:
     return create_engine(
         url,
         poolclass=QueuePool,
@@ -15,5 +17,5 @@ def make_engine(url, echo=False, pool_size=10, max_overflow=20):
     )
 
 
-def make_session_factory(engine):
+def make_session_factory(engine: Engine) -> sessionmaker[Session]:
     return sessionmaker(bind=engine, expire_on_commit=False)

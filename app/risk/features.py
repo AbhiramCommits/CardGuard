@@ -1,6 +1,8 @@
 import math
 from collections import defaultdict, deque
-from datetime import datetime, timezone
+from collections.abc import Sequence
+from datetime import UTC, datetime
+from typing import Any
 
 FEATURE_SCHEMA_VERSION = "v1"
 
@@ -22,26 +24,31 @@ WINDOW_24H = 86400.0
 NO_HISTORY_SECONDS_SINCE_LAST = 1_000_000.0
 
 
-def _to_epoch(ts):
+def _to_epoch(ts: datetime | str) -> float:
     if isinstance(ts, datetime):
         if ts.tzinfo is None:
-            ts = ts.replace(tzinfo=timezone.utc)
+            ts = ts.replace(tzinfo=UTC)
         else:
-            ts = ts.astimezone(timezone.utc)
+            ts = ts.astimezone(UTC)
         return ts.timestamp()
-    parsed = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+    parsed = datetime.fromisoformat(str(ts))
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc).timestamp()
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC).timestamp()
 
 
-def _hour_sin_cos(epoch):
-    utc = datetime.fromtimestamp(epoch, tz=timezone.utc)
+def _hour_sin_cos(epoch: float) -> tuple[float, float]:
+    utc = datetime.fromtimestamp(epoch, tz=UTC)
     hour = utc.hour + utc.minute / 60.0 + utc.second / 3600.0
     return math.sin(2 * math.pi * hour / 24.0), math.cos(2 * math.pi * hour / 24.0)
 
 
-def _card_features(times, amounts, mccs, merchants):
+def _card_features(
+    times: Sequence[float] | Any,
+    amounts: Sequence[float] | Any,
+    mccs: Sequence[str] | Any,
+    merchants: Sequence[str] | Any,
+) -> tuple[Any, ...]:
     import numpy as np
 
     n = len(times)
@@ -68,17 +75,17 @@ def _card_features(times, amounts, mccs, merchants):
             pref[i] = pref[i - 1] + amounts[i]
             pref2[i] = pref2[i - 1] + amounts[i] * amounts[i]
 
-    mcc_queues = defaultdict(deque)
-    seen_merchants = set()
+    mcc_queues: dict[str, deque[int]] = defaultdict(deque)
+    seen_merchants: set[str] = set()
     for i in range(n):
         t = times[i]
         hour_sin[i], hour_cos[i] = _hour_sin_cos(t)
         if i > 0:
             seconds_since_last[i] = t - times[i - 1]
-            count_1h[i] = i - int(np.searchsorted(times[:i], t - WINDOW_1H))
-            count_24h[i] = i - int(np.searchsorted(times[:i], t - WINDOW_24H))
+            count_1h[i] = max(0, i - int(np.searchsorted(times, t - WINDOW_1H)))
+            count_24h[i] = max(0, i - int(np.searchsorted(times, t - WINDOW_24H)))
 
-            start = int(np.searchsorted(times[:i], t - WINDOW_30D))
+            start = int(np.searchsorted(times, t - WINDOW_30D))
             count = i - start
             queue = mcc_queues[mccs[i]]
             while queue and queue[0] < start:
@@ -95,26 +102,42 @@ def _card_features(times, amounts, mccs, merchants):
         seen_merchants.add(merchants[i])
         mcc_queues[mccs[i]].append(i)
 
-    return amounts, zscore, mcc_share, seconds_since_last, count_1h, count_24h, hour_sin, hour_cos, merchant_new
+    return (
+        amounts,
+        zscore,
+        mcc_share,
+        seconds_since_last,
+        count_1h,
+        count_24h,
+        hour_sin,
+        hour_cos,
+        merchant_new,
+    )
 
 
-def build_features(tx, history):
+def build_features(
+    tx: dict[str, Any], history: list[dict[str, Any]]
+) -> dict[str, float]:
     tx_ts = _to_epoch(tx["ts"])
     prior = [row for row in history if _to_epoch(row["ts"]) < tx_ts]
     prior.sort(key=lambda row: _to_epoch(row["ts"]))
 
     times = [_to_epoch(row["ts"]) for row in prior] + [tx_ts]
-    amounts = [float(row["amount_cents"]) for row in prior] + [float(tx["amount_cents"])]
+    amounts = [float(row["amount_cents"]) for row in prior] + [
+        float(tx["amount_cents"])
+    ]
     mccs = [str(row["mcc"]) for row in prior] + [str(tx["mcc"])]
-    merchants = [str(row["merchant_name"]) for row in prior] + [str(tx["merchant_name"])]
+    merchants = [str(row["merchant_name"]) for row in prior] + [
+        str(tx["merchant_name"])
+    ]
 
     values = _card_features(times, amounts, mccs, merchants)
     return {name: float(column[-1]) for name, column in zip(FEATURE_NAMES, values)}
 
 
-def build_features_batch(df):
+def build_features_batch(df: Any) -> Any:
     import numpy as np
-    import pandas as pd
+    import pandas as pd  # type: ignore[import-untyped]
 
     frame = df.sort_values(["card_id", "ts"])
     parts = []

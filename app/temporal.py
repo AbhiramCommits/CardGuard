@@ -1,8 +1,12 @@
 import asyncio
+import concurrent.futures
 import logging
 import os
 import threading
+import time
+from collections.abc import Callable, Coroutine
 from dataclasses import asdict
+from typing import Any
 
 from temporalio.client import Client
 from temporalio.exceptions import WorkflowAlreadyStartedError
@@ -28,34 +32,52 @@ class WorkflowNotFoundError(LookupError):
 _client: Client | None = None
 _loop: asyncio.AbstractEventLoop | None = None
 _lock = threading.Lock()
+_last_connect_attempt = 0.0
+_last_connect_host: str | None = None
+CONNECT_RETRY_COOLDOWN_SECONDS = 30.0
 
 
 def _ensure_client(timeout: float = 5.0) -> Client:
-    global _client, _loop
+    global _client, _loop, _last_connect_attempt, _last_connect_host
     host = os.environ.get("TEMPORAL_HOST", DEFAULT_TEMPORAL_HOST)
     namespace = os.environ.get("TEMPORAL_NAMESPACE", DEFAULT_TEMPORAL_NAMESPACE)
     with _lock:
+        if _client is not None:
+            return _client
+        now = time.monotonic()
+        if host != _last_connect_host:
+            _last_connect_host = host
+            _last_connect_attempt = 0.0
+        if (
+            _last_connect_attempt
+            and now - _last_connect_attempt < CONNECT_RETRY_COOLDOWN_SECONDS
+        ):
+            raise TemporalUnavailableError(f"temporal unavailable at {host} (cooldown)")
+        _last_connect_attempt = now
         if _loop is None or _loop.is_closed():
             _loop = asyncio.new_event_loop()
             threading.Thread(
                 target=_loop.run_forever, daemon=True, name="cardguard-temporal"
             ).start()
-        if _client is None:
-            future = asyncio.run_coroutine_threadsafe(
-                Client.connect(host, namespace=namespace), _loop
-            )
-            try:
-                _client = future.result(timeout=timeout)
-                logger.info("connected to Temporal at %s (namespace %s)", host, namespace)
-            except Exception as exc:
-                logger.error("failed to connect to Temporal at %s: %s", host, exc)
-                raise TemporalUnavailableError(f"temporal unavailable at {host}") from exc
+        future: concurrent.futures.Future[Client] = asyncio.run_coroutine_threadsafe(
+            Client.connect(host, namespace=namespace), _loop
+        )
+        try:
+            _client = future.result(timeout=timeout)
+            logger.info("connected to Temporal at %s (namespace %s)", host, namespace)
+        except Exception as exc:
+            logger.error("failed to connect to Temporal at %s: %s", host, exc)
+            raise TemporalUnavailableError(f"temporal unavailable at {host}") from exc
     return _client
 
 
-def _call(coro_factory, timeout: float = 10.0):
+def _call(
+    coro_factory: Callable[[Client], Coroutine[Any, Any, Any]], timeout: float = 10.0
+) -> Any:
     client = _ensure_client()
-    future = asyncio.run_coroutine_threadsafe(coro_factory(client), _loop)
+    loop = _loop
+    assert loop is not None
+    future = asyncio.run_coroutine_threadsafe(coro_factory(client), loop)
     try:
         return future.result(timeout=timeout)
     except RPCError as exc:
@@ -64,7 +86,9 @@ def _call(coro_factory, timeout: float = 10.0):
         raise TemporalUnavailableError(str(exc)) from exc
 
 
-def start_review_workflow(authorization_id: int, public_id: str, timeout_seconds: int) -> bool:
+def start_review_workflow(
+    authorization_id: int, public_id: str, timeout_seconds: int
+) -> bool:
     try:
         _call(
             lambda client: client.start_workflow(
@@ -78,11 +102,10 @@ def start_review_workflow(authorization_id: int, public_id: str, timeout_seconds
     except WorkflowAlreadyStartedError:
         return True
     except Exception:
-        logger.error(
+        logger.exception(
             "failed to start review workflow for authorization %s (public %s)",
             authorization_id,
             public_id,
-            exc_info=True,
         )
         return False
 
@@ -103,16 +126,17 @@ def start_hold_expiry_workflow(
     except WorkflowAlreadyStartedError:
         return True
     except Exception:
-        logger.error(
+        logger.exception(
             "failed to start hold-expiry workflow for authorization %s (public %s)",
             authorization_id,
             public_id,
-            exc_info=True,
         )
         return False
 
 
-def signal_review_decision(public_id: str, approve: bool, reviewer_id: str, note: str) -> None:
+def signal_review_decision(
+    public_id: str, approve: bool, reviewer_id: str, note: str
+) -> None:
     _call(
         lambda client: client.get_workflow_handle(f"review-{public_id}").signal(
             ReviewWorkflow.reviewer_decision, args=[approve, reviewer_id, note]
@@ -120,7 +144,7 @@ def signal_review_decision(public_id: str, approve: bool, reviewer_id: str, note
     )
 
 
-def query_review_state(public_id: str) -> dict:
+def query_review_state(public_id: str) -> dict[str, Any]:
     state = _call(
         lambda client: client.get_workflow_handle(f"review-{public_id}").query(
             ReviewWorkflow.get_state

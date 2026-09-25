@@ -79,7 +79,10 @@ class LedgerEntry(Base):
         index=True,
     )
     account_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("account.id", ondelete="RESTRICT"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("account.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
     )
     direction: Mapped[Direction] = mapped_column(
         Enum(Direction, name="direction", values_callable=enum_values), nullable=False
@@ -98,6 +101,8 @@ class LedgerEntry(Base):
         index=True,
     )
 
-    authorization: Mapped["Authorization"] = relationship(back_populates="ledger_entries")
+    authorization: Mapped["Authorization"] = relationship(
+        back_populates="ledger_entries"
+    )
     account: Mapped["Account"] = relationship(back_populates="ledger_entries")
     posting: Mapped["LedgerPosting"] = relationship(back_populates="entries")

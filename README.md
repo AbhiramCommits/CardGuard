@@ -1,106 +1,188 @@
 # cardguard
 
-Real-time card authorization risk engine modeled on corporate card spend management.
-Flask 3 + SQLAlchemy 2 + PostgreSQL 16, with a double-entry ledger, a deterministic
-policy engine, and a LightGBM fraud-scoring model.
+Cardguard is a real-time card authorization risk engine modeled on corporate card
+spend management. Companies issue cards to employees, every authorization is scored
+against spend policies and a fraud model, and every approved dollar is recorded in a
+double-entry ledger so that holds, captures, reversals, and expiries always balance to
+zero. Decisions that need a human (or that should age out) run as durable Temporal
+workflows rather than in the HTTP request path, so a crashed worker, a restarted API,
+or a lost signal can never lose money or double-post it. The whole system is built to
+be provably correct under retries: idempotency keys on the way in, unique constraints
+in the database, and property tests that hammer the ledger with random operation
+sequences to prove the invariants hold.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph clients[" "]
+        R[Card network / merchant gateway]
+        RV[Human reviewer]
+    end
+
+    subgraph api["API (Flask + gunicorn)"]
+        AUTH["POST /v1/authorizations"]
+        CAP["capture / reverse"]
+        REV["review-decision / review-status"]
+    end
+
+    subgraph decide["Decisioning"]
+        POL["Policy rules<br/>MCC, limits, velocity"]
+        ML["LightGBM model<br/>fraud score"]
+    end
+
+    subgraph data["PostgreSQL 16"]
+        AUTHZ[(authorizations)]
+        LEDGER[(double-entry ledger)]
+        IDEM[(idempotency records)]
+    end
+
+    subgraph temporal["Temporal"]
+        RW[ReviewWorkflow]
+        HE[HoldExpiryWorkflow]
+        W[Worker: cardguard-risk]
+    end
+
+    R -->|"auth request (idempotency key)"| AUTH
+    AUTH --> POL --> ML
+    ML -->|decline| R
+    ML -->|approve| LEDGER
+    ML -->|review| RW
+    RW --> W --> LEDGER
+    HE --> W --> LEDGER
+    RV --> REV --> RW
+    AUTH --> IDEM
+    CAP --> LEDGER
+    REV --> RW
+```
 
 ## Quickstart
 
 ```sh
-make up        # postgres 16 + gunicorn API (docker compose)
+make up        # postgres 16, temporal, temporal-ui, worker, api (docker compose)
 make migrate   # alembic upgrade head
 make seed      # 3 companies, 25 employees, 25 cards, spend policies
-make test      # pytest + coverage (needs postgres up)
-make data      # generate the synthetic transaction dataset
-make train     # train the risk model, write metrics + model card
+make test      # pytest with coverage (also runs the Temporal integration suite)
 ```
 
-The API serves `POST /v1/authorizations` (idempotent authorization + risk decision),
-`POST /v1/authorizations/<id>/capture` and `/reverse`, `GET /v1/accounts/<id>/balance`,
-`GET /healthz`, and `GET /readyz`.
-
-## Decisioning pipeline
-
-1. **Policy rules** (`app/risk/policy.py`) — hard rules evaluate first and decline
-   immediately without a model call: `MCC_BLOCKED`, `PER_TXN_LIMIT`, `MONTHLY_LIMIT`
-   (single SQL aggregate over ledger entries), `VELOCITY` (Postgres range query).
-2. **ML scoring** (`app/risk/model.py`) — the model is loaded once at app startup and
-   scored in-process. Scores below `threshold_low` approve, scores at or above
-   `threshold_high` decline with reason `MODEL_HIGH_RISK`, and scores in between
-   `review` (queued for the Temporal workflow in the next step).
-3. **Fallback** — if the model artifact is missing or scoring raises, the request is
-   decided policy-only, `risk_score` is `null`, and an ERROR is logged. Model failures
-   never 500 the authorization request.
-
-### Fast path vs slow path
-
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant A as API
-    participant D as Policy + Model
-    participant L as Ledger (PG)
-    participant T as Temporal
-    participant W as Worker
-    participant R as Human reviewer
-
-    C->>A: POST /v1/authorizations (sync)
-    A->>D: hard rules, then ML score
-    alt fast path: approve
-        D-->>A: approve
-        A->>L: post hold (same transaction)
-        A->>T: start HoldExpiryWorkflow (fire & forget)
-        A-->>C: 200 {"decision": "approve"}
-    else fast path: decline
-        D-->>A: decline
-        A-->>C: 200 {"decision": "decline"}
-    else slow path: review
-        D-->>A: review
-        A->>T: start ReviewWorkflow (non-blocking)
-        A-->>C: 200 {"decision": "review"}
-        T->>W: workflow task
-        W->>W: wait for signal or 24h timer
-        R->>A: POST /v1/authorizations/<id>/review-decision
-        A->>T: signal reviewer_decision
-        W->>L: post hold / finalize decline (idempotent activities)
-        R->>A: GET /v1/authorizations/<id>/review-status
-        A->>T: query get_state
-        A-->>R: {"status": "approved"|"declined"|...}
-    end
-```
-
-## Temporal (durable path)
-
-Two workflows run on task queue `cardguard-risk` (`workflows/`):
-
-- **`ReviewWorkflow(authorization_id, timeout_seconds)`** — started fire-and-forget
-  whenever the decision is `review`. It waits for the `reviewer_decision(approve,
-  reviewer_id, note)` signal; on approve it posts the ledger hold, on decline it
-  finalizes the authorization as declined, and if no signal arrives within the timeout
-  (24h by default, configurable via `CARDGUARD_REVIEW_TIMEOUT_SECONDS`) it auto-declines
-  with `REVIEW_TIMEOUT`. The `get_state` query exposes the current status.
-- **`HoldExpiryWorkflow(authorization_id, expires_at)`** — durable timer until the
-  hold's expiry; releases the hold and marks the authorization `expired` if it was
-  never captured, and exits as a no-op if it was captured or reversed.
-
-Activities (`workflows/activities.py`) are idempotent, keyed by authorization_id, and
-run with a retry policy (1s initial interval, 2.0 backoff, max 5 attempts,
-`ValidationError` non-retryable). Because Temporal persists workflow state server-side,
-killing the worker mid-workflow is safe: a restarted worker resumes exactly where the
-crash happened, and replayed activities never double-post (the ledger's unique
-constraint backs this up).
-
-### Crash-durability demo
+Optional:
 
 ```sh
-make demo   # runs scripts/demo_crash_recovery.sh
+make data      # generate the synthetic transaction dataset
+make train     # train the LightGBM model, write metrics + model card
+make loadtest  # k6 scenarios A/B (requires the stack up; k6 on PATH)
+make demo      # crash-durability demo (kills the worker mid-workflow)
 ```
 
-The demo routes an authorization to `review`, kills the worker container mid-workflow
-with `docker compose kill worker`, restarts it, sends the approve signal, and shows the
-workflow completing with exactly one hold posting in the ledger.
+## API reference
 
-Temporal UI: http://localhost:8080
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/v1/authorizations` | POST | Authorization + risk decision. Body: `idempotency_key`, `card_token`, `merchant_name`, `mcc`, `amount_cents`, `timestamp`. Returns `authorization_id` (uuid), `decision` (`approve`\|`decline`\|`review`), `decision_reason`, `risk_score`, `latency_ms`. Replays return the stored response verbatim with header `Idempotent-Replay: true`; the same key with a different body is a `409`. |
+| `/v1/authorizations/<id>/capture` | POST | Capture the hold (`amount_cents <= held`); partial capture releases the remainder. Over-capture is a `409`. |
+| `/v1/authorizations/<id>/reverse` | POST | Reverse captured and held amounts back to available credit. |
+| `/v1/authorizations/<id>/review-decision` | POST | Signal the running `ReviewWorkflow`: `{"decision": "approve"\|"decline", "reviewer_id", "note"}`. |
+| `/v1/authorizations/<id>/review-status` | GET | Query the workflow state: `pending_review`, `approved`, `declined`, or `auto_declined`. |
+| `/v1/accounts/<id>/balance` | GET | Derived account balance computed from ledger entries. |
+| `/healthz`, `/readyz` | GET | Liveness / readiness (readiness checks the database). |
+
+Decision reasons: `APPROVED`, `MCC_BLOCKED`, `PER_TXN_LIMIT`, `MONTHLY_LIMIT`,
+`VELOCITY`, `NEAR_MONTHLY_LIMIT`, `MODEL_HIGH_RISK`, `MODEL_REVIEW`,
+`REVIEW_TIMEOUT`, `REVIEW_DECLINED`, `EXPIRED`.
+
+## Measured performance
+
+Measured with k6 against the local stack (gunicorn 4 workers x 8 threads, PostgreSQL 16,
+LightGBM scoring in-process) on a shared Apple Silicon dev machine (8 cores, noisy
+neighbors — treat the tails as upper bounds, not steady-state behavior). Raw results:
+`loadtest/results/*.json`.
+
+| Scenario | Requests | Throughput | p50 | p95 | p99 | max | Errors | Notes |
+|---|---|---|---|---|---|---|---|---|
+| A: steady-state 60/25/15 approve/decline/review, 50 rps sustained | 3,549 | 35.5 rps | 19.3 ms | 80.9 ms | 228.2 ms | 505 ms | 0.02% | ramp 10→50 rps over 40s, 60s sustain; measured decision mix 60/26/14 |
+| B: retry storm, 20% idempotency replays | 3,550 | 35.5 rps | 19.9 ms | 476.1 ms | 1,210 ms | 2,050 ms | 0.39% | 648/3,550 (18.3%) served from replay with zero duplicate postings; the tail is same-key contention on the idempotency unique index |
+
+## Model metrics
+
+LightGBM binary classifier on 200,416 synthetic transactions (0.32% fraud),
+time-ordered 80/20 split, features computed strictly before each transaction timestamp.
+Full details in `docs/model-card.md`.
+
+| Metric | Value |
+|---|---|
+| PR-AUC | 0.98719 |
+| ROC-AUC | 0.99994 |
+| Precision @ threshold | 0.95041 |
+| Recall @ threshold | 0.95833 |
+| Fraud-dollar recall @ threshold | 0.96177 |
+| **False-decline rate** | **0.015%** (6 of 39,964 legitimate) |
+| `threshold_high` (decline) | 0.72 |
+| `threshold_low` (auto-approve below) | 0.63 |
+
+The operating threshold minimizes false declines subject to catching at least 95% of
+fraud dollars on the held-out set; it catches 96.2% while declining 0.015% of good
+transactions.
+
+## Durability demo
+
+```sh
+make demo
+```
+
+`scripts/demo_crash_recovery.sh` routes an authorization to `review`, kills the worker
+container mid-workflow (`docker compose kill worker`), restarts it, sends the approve
+signal, and shows the workflow completing with exactly one hold posting in the ledger —
+the workflow state lived in Temporal the whole time. The same behavior is covered by
+integration tests on Temporal's time-skipping test server (`tests/test_temporal.py`),
+including transient DB errors in activities, which retry and still post exactly once.
+
+## Correctness harness
+
+- `tests/test_invariants.py` runs a hypothesis property test over random sequences of
+  hold / capture / partial-capture / reverse / expire operations, asserting after every
+  operation that total debits equal total credits, the holds and settled accounts never
+  go negative, derived available credit never goes negative, and captured never exceeds
+  held.
+- A 5,000-request replay storm (30% duplicate idempotency keys) asserts
+  `count(ledger_entry) == 2 * count(distinct authorization)` — zero duplicate postings.
+- `tests/test_ledger.py` covers the double-entry balance and idempotent replay of each
+  posting function, and the DB-level unique constraint that makes duplicates fail loudly.
+
+## Design decisions & tradeoffs
+
+**Integer cents for money.** Money is `BIGINT` cents end-to-end. Floating point drifts
+(Banker's rounding, representation error) and `DECIMAL` in the database makes every
+aggregation and comparison awkward across Python/Postgres boundaries. Cents are exact,
+sortable, and the maximum BIGINT (9.2e18) covers $92 quadrillion — no real corporate
+spend program comes close. Conversion to display currency is a presentation concern.
+
+**Double-entry ledger.** Every posting is balanced: sum(debits) == sum(credits) within
+an (authorization, entry_type) group, enforced in code and by a unique constraint on
+`(authorization_id, entry_type, account_id, direction)`. Account balances are derived
+from entries, never stored, so a bug can corrupt an entry but can never silently
+desync a stored balance; and `sum(balances) == 0` is a free, continuously-checkable
+invariant. The cost is twice the rows and the discipline of always moving money
+between accounts rather than mutating a number.
+
+**Idempotency keys.** Card networks retry, merchants double-submit, and clients
+timeout — so every incoming authorization carries an idempotency key. The stored
+response is replayed verbatim (never re-scored, never re-posted), and the same key
+with a different body is a hard `409`. Ledger postings carry their own keys, and the
+unique constraint is the last line of defense: a duplicate can only ever fail loudly,
+never double-count. The tradeoff is an extra lookup per request (measured: ~1 ms) and
+one unique index.
+
+**Temporal instead of cron or a Celery retry loop.** Review decisions and hold
+expiries are stateful, long-running, and must survive restarts: a 24-hour review
+timeout outlives any process, and a hold expiry must fire exactly once even if the
+worker dies a millisecond after posting. A cron job has coarse granularity, no
+per-item state, and no exactly-once guarantees; a Celery queue can retry but loses
+in-flight state on broker loss and needs manual DLQ/reconciliation machinery for
+crash recovery. Temporal gives durable timers, signals, queries, retry policies, and
+crash recovery for free; the cost is an extra infrastructure component and a
+different programming model (workflows must be deterministic). Note the fast path
+(approve/decline) never touches Temporal: only the slow, human-or-timer path pays for
+it.
 
 ## Data
 
@@ -110,7 +192,7 @@ the model is trained on synthetic data from `ml/generate_synthetic.py`: ~200k la
 transactions across 500 cards with a ~0.3% fraud rate. Fraud is generated with genuine
 signal — unusual MCC-for-card, amounts 4–15x the card's trailing mean, high velocity
 (within minutes of a prior authorization), and odd-hour timestamps — so the features
-listed below are learnable rather than noise.
+are learnable rather than noise.
 
 ## Training
 
@@ -120,9 +202,3 @@ random**: rows are ordered by transaction timestamp, the first 80% trains and th
 20% is held out. All features are computed from card history strictly before the
 transaction timestamp (no leakage), using the same code path as serving
 (`app/risk/features.py`).
-
-The operating threshold is chosen to minimize false declines subject to catching at
-least 95% of fraud dollars on the held-out set; `threshold_low` is the highest threshold
-still catching 99% of fraud dollars. Artifacts land in `ml/artifacts/` (model_v1.joblib,
-metrics.json) and `docs/model-card.md` is rendered from the metrics. See
-`docs/query-plans.md` for the policy-aggregate EXPLAIN ANALYZE output.

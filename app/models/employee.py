@@ -17,7 +17,10 @@ class Employee(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     company_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("company.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("company.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)

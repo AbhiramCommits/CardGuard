@@ -49,7 +49,9 @@ def _company_for_authorization(session: Session, authorization_id: int) -> Compa
 
 def _require_accounts(company: Company) -> dict[AccountType, Account]:
     accounts = {account.account_type: account for account in company.accounts}
-    missing = [account_type for account_type in AccountType if account_type not in accounts]
+    missing = [
+        account_type for account_type in AccountType if account_type not in accounts
+    ]
     if missing:
         raise ValueError(f"company {company.id} missing accounts: {missing}")
     return accounts
@@ -95,8 +97,12 @@ def _post(
     if existing is not None:
         return _replayed(session, existing)
 
-    debits = sum(amount for _, direction, amount in legs if direction is Direction.debit)
-    credits = sum(amount for _, direction, amount in legs if direction is Direction.credit)
+    debits = sum(
+        amount for _, direction, amount in legs if direction is Direction.debit
+    )
+    credits = sum(
+        amount for _, direction, amount in legs if direction is Direction.credit
+    )
     if debits != credits or debits == 0:
         raise UnbalancedPostingError(
             f"unbalanced posting authorization_id={authorization_id} "
@@ -169,10 +175,18 @@ def _posting(
         (accounts[debit_account], Direction.debit, amount_cents),
         (accounts[credit_account], Direction.credit, amount_cents),
     ]
-    return _post(session, authorization_id, entry_type, amount_cents, key, legs, commit=commit)
+    return _post(
+        session, authorization_id, entry_type, amount_cents, key, legs, commit=commit
+    )
 
 
-def post_hold(session, authorization_id, amount_cents, idempotency_key=None, commit=True):
+def post_hold(
+    session: Session,
+    authorization_id: int,
+    amount_cents: int,
+    idempotency_key: str | None = None,
+    commit: bool = True,
+) -> PostingResult:
     return _posting(
         session,
         authorization_id,
@@ -185,7 +199,13 @@ def post_hold(session, authorization_id, amount_cents, idempotency_key=None, com
     )
 
 
-def post_capture(session, authorization_id, amount_cents, idempotency_key=None, commit=True):
+def post_capture(
+    session: Session,
+    authorization_id: int,
+    amount_cents: int,
+    idempotency_key: str | None = None,
+    commit: bool = True,
+) -> PostingResult:
     return _posting(
         session,
         authorization_id,
@@ -198,7 +218,13 @@ def post_capture(session, authorization_id, amount_cents, idempotency_key=None, 
     )
 
 
-def post_reversal(session, authorization_id, amount_cents, idempotency_key=None, commit=True):
+def post_reversal(
+    session: Session,
+    authorization_id: int,
+    amount_cents: int,
+    idempotency_key: str | None = None,
+    commit: bool = True,
+) -> PostingResult:
     return _posting(
         session,
         authorization_id,
@@ -211,7 +237,13 @@ def post_reversal(session, authorization_id, amount_cents, idempotency_key=None,
     )
 
 
-def post_hold_release(session, authorization_id, amount_cents, idempotency_key=None, commit=True):
+def post_hold_release(
+    session: Session,
+    authorization_id: int,
+    amount_cents: int,
+    idempotency_key: str | None = None,
+    commit: bool = True,
+) -> PostingResult:
     return _posting(
         session,
         authorization_id,

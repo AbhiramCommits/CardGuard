@@ -45,7 +45,9 @@ def evaluate_policy(ctx: PolicyContext) -> PolicyDecision:
         return PolicyDecision("decline", ReasonCode.MONTHLY_LIMIT, 100.0)
     if ctx.velocity_count >= ctx.velocity_max_auths:
         return PolicyDecision("decline", ReasonCode.VELOCITY, 100.0)
-    utilization = projected / ctx.monthly_limit_cents if ctx.monthly_limit_cents else 1.0
+    utilization = (
+        projected / ctx.monthly_limit_cents if ctx.monthly_limit_cents else 1.0
+    )
     if utilization >= REVIEW_THRESHOLD:
         return PolicyDecision(
             "review", ReasonCode.NEAR_MONTHLY_LIMIT, round(utilization * 100, 2)

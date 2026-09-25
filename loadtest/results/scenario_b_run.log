@@ -1,0 +1,382 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: loadtest/scenario_b.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 300 max VUs, 2m10s max duration (incl. graceful stop):
+              * retry_storm: Up to 50.00 iterations/s for 1m40s over 5 stages (maxVUs: 60-300, gracefulStop: 30s)
+
+
+running (0m01.0s), 000/060 VUs, 9 complete and 0 interrupted iterations
+retry_storm   [   1% ] 000/060 VUs  0m01.0s/1m40s  10.00 iters/s
+
+running (0m02.0s), 000/060 VUs, 19 complete and 0 interrupted iterations
+retry_storm   [   2% ] 000/060 VUs  0m02.0s/1m40s  10.00 iters/s
+
+running (0m03.0s), 000/060 VUs, 29 complete and 0 interrupted iterations
+retry_storm   [   3% ] 000/060 VUs  0m03.0s/1m40s  10.00 iters/s
+
+running (0m04.0s), 000/060 VUs, 39 complete and 0 interrupted iterations
+retry_storm   [   4% ] 000/060 VUs  0m04.0s/1m40s  10.00 iters/s
+
+running (0m05.0s), 000/060 VUs, 49 complete and 0 interrupted iterations
+retry_storm   [   5% ] 000/060 VUs  0m05.0s/1m40s  10.00 iters/s
+
+running (0m06.0s), 000/060 VUs, 59 complete and 0 interrupted iterations
+retry_storm   [   6% ] 000/060 VUs  0m06.0s/1m40s  10.00 iters/s
+
+running (0m07.0s), 000/060 VUs, 69 complete and 0 interrupted iterations
+retry_storm   [   7% ] 000/060 VUs  0m07.0s/1m40s  10.00 iters/s
+
+running (0m08.0s), 000/060 VUs, 79 complete and 0 interrupted iterations
+retry_storm   [   8% ] 000/060 VUs  0m08.0s/1m40s  10.00 iters/s
+
+running (0m09.0s), 000/060 VUs, 89 complete and 0 interrupted iterations
+retry_storm   [   9% ] 000/060 VUs  0m09.0s/1m40s  10.00 iters/s
+
+running (0m10.0s), 000/060 VUs, 99 complete and 0 interrupted iterations
+retry_storm   [  10% ] 000/060 VUs  0m10.0s/1m40s  10.00 iters/s
+
+running (0m11.0s), 001/060 VUs, 109 complete and 0 interrupted iterations
+retry_storm   [  11% ] 001/060 VUs  0m11.0s/1m40s  11.00 iters/s
+
+running (0m12.0s), 003/060 VUs, 118 complete and 0 interrupted iterations
+retry_storm   [  12% ] 003/060 VUs  0m12.0s/1m40s  11.96 iters/s
+
+running (0m13.0s), 000/060 VUs, 134 complete and 0 interrupted iterations
+retry_storm   [  13% ] 000/060 VUs  0m13.0s/1m40s  13.00 iters/s
+
+running (0m14.0s), 000/060 VUs, 147 complete and 0 interrupted iterations
+retry_storm   [  14% ] 000/060 VUs  0m14.0s/1m40s  13.96 iters/s
+
+running (0m15.0s), 000/060 VUs, 162 complete and 0 interrupted iterations
+retry_storm   [  15% ] 000/060 VUs  0m15.0s/1m40s  15.00 iters/s
+
+running (0m16.0s), 000/060 VUs, 177 complete and 0 interrupted iterations
+retry_storm   [  16% ] 000/060 VUs  0m16.0s/1m40s  15.97 iters/s
+
+running (0m17.0s), 001/060 VUs, 193 complete and 0 interrupted iterations
+retry_storm   [  17% ] 001/060 VUs  0m17.0s/1m40s  17.00 iters/s
+
+running (0m18.0s), 000/060 VUs, 211 complete and 0 interrupted iterations
+retry_storm   [  18% ] 000/060 VUs  0m18.0s/1m40s  17.97 iters/s
+
+running (0m19.0s), 000/060 VUs, 230 complete and 0 interrupted iterations
+retry_storm   [  19% ] 000/060 VUs  0m19.0s/1m40s  19.00 iters/s
+
+running (0m20.0s), 000/060 VUs, 249 complete and 0 interrupted iterations
+retry_storm   [  20% ] 000/060 VUs  0m20.0s/1m40s  19.97 iters/s
+
+running (0m21.0s), 001/060 VUs, 269 complete and 0 interrupted iterations
+retry_storm   [  21% ] 001/060 VUs  0m21.0s/1m40s  21.00 iters/s
+
+running (0m22.0s), 001/060 VUs, 290 complete and 0 interrupted iterations
+retry_storm   [  22% ] 001/060 VUs  0m22.0s/1m40s  21.98 iters/s
+
+running (0m23.0s), 001/060 VUs, 313 complete and 0 interrupted iterations
+retry_storm   [  23% ] 001/060 VUs  0m23.0s/1m40s  23.00 iters/s
+
+running (0m24.0s), 000/060 VUs, 337 complete and 0 interrupted iterations
+retry_storm   [  24% ] 000/060 VUs  0m24.0s/1m40s  23.98 iters/s
+
+running (0m25.0s), 001/060 VUs, 361 complete and 0 interrupted iterations
+retry_storm   [  25% ] 001/060 VUs  0m25.0s/1m40s  25.00 iters/s
+
+running (0m26.0s), 000/060 VUs, 387 complete and 0 interrupted iterations
+retry_storm   [  26% ] 000/060 VUs  0m26.0s/1m40s  25.98 iters/s
+
+running (0m27.0s), 001/060 VUs, 413 complete and 0 interrupted iterations
+retry_storm   [  27% ] 001/060 VUs  0m27.0s/1m40s  27.00 iters/s
+
+running (0m28.0s), 001/060 VUs, 440 complete and 0 interrupted iterations
+retry_storm   [  28% ] 001/060 VUs  0m28.0s/1m40s  27.98 iters/s
+
+running (0m29.0s), 001/060 VUs, 469 complete and 0 interrupted iterations
+retry_storm   [  29% ] 001/060 VUs  0m29.0s/1m40s  29.00 iters/s
+
+running (0m30.0s), 000/060 VUs, 499 complete and 0 interrupted iterations
+retry_storm   [  30% ] 000/060 VUs  0m30.0s/1m40s  29.98 iters/s
+
+running (0m31.0s), 001/060 VUs, 529 complete and 0 interrupted iterations
+retry_storm   [  31% ] 001/060 VUs  0m31.0s/1m40s  31.00 iters/s
+
+running (0m32.1s), 002/060 VUs, 559 complete and 0 interrupted iterations
+retry_storm   [  32% ] 002/060 VUs  0m32.1s/1m40s  31.98 iters/s
+time="2026-09-25T03:40:50-07:00" level=warning msg="Request Failed" error="Post \"http://localhost:8000/v1/authorizations\": read tcp 127.0.0.1:56350->127.0.0.1:8000: read: connection reset by peer"
+time="2026-09-25T03:40:50-07:00" level=warning msg="Request Failed" error="Post \"http://localhost:8000/v1/authorizations\": read tcp 127.0.0.1:56299->127.0.0.1:8000: read: connection reset by peer"
+time="2026-09-25T03:40:50-07:00" level=error msg="unexpected status 0: null" source=console
+time="2026-09-25T03:40:50-07:00" level=error msg="unexpected status 0: null" source=console
+time="2026-09-25T03:40:50-07:00" level=warning msg="Request Failed" error="Post \"http://localhost:8000/v1/authorizations\": read tcp 127.0.0.1:56351->127.0.0.1:8000: read: connection reset by peer"
+time="2026-09-25T03:40:50-07:00" level=error msg="unexpected status 0: null" source=console
+time="2026-09-25T03:40:51-07:00" level=warning msg="Request Failed" error="Post \"http://localhost:8000/v1/authorizations\": read tcp 127.0.0.1:56302->127.0.0.1:8000: read: connection reset by peer"
+time="2026-09-25T03:40:51-07:00" level=error msg="unexpected status 0: null" source=console
+
+running (0m33.0s), 029/060 VUs, 565 complete and 0 interrupted iterations
+retry_storm   [  33% ] 029/060 VUs  0m33.0s/1m40s  33.00 iters/s
+time="2026-09-25T03:40:51-07:00" level=warning msg="Request Failed" error="Post \"http://localhost:8000/v1/authorizations\": read tcp 127.0.0.1:56318->127.0.0.1:8000: read: connection reset by peer"
+time="2026-09-25T03:40:51-07:00" level=error msg="unexpected status 0: null" source=console
+time="2026-09-25T03:40:51-07:00" level=warning msg="Request Failed" error="Post \"http://localhost:8000/v1/authorizations\": read tcp 127.0.0.1:56323->127.0.0.1:8000: read: connection reset by peer"
+time="2026-09-25T03:40:51-07:00" level=error msg="unexpected status 0: null" source=console
+time="2026-09-25T03:40:51-07:00" level=warning msg="Request Failed" error="Post \"http://localhost:8000/v1/authorizations\": read tcp 127.0.0.1:56315->127.0.0.1:8000: read: connection reset by peer"
+time="2026-09-25T03:40:51-07:00" level=error msg="unexpected status 0: null" source=console
+time="2026-09-25T03:40:51-07:00" level=warning msg="Request Failed" error="Post \"http://localhost:8000/v1/authorizations\": read tcp 127.0.0.1:56319->127.0.0.1:8000: read: connection reset by peer"
+time="2026-09-25T03:40:51-07:00" level=warning msg="Request Failed" error="Post \"http://localhost:8000/v1/authorizations\": read tcp 127.0.0.1:56317->127.0.0.1:8000: read: connection reset by peer"
+time="2026-09-25T03:40:51-07:00" level=warning msg="Request Failed" error="Post \"http://localhost:8000/v1/authorizations\": read tcp 127.0.0.1:56320->127.0.0.1:8000: read: connection reset by peer"
+time="2026-09-25T03:40:51-07:00" level=warning msg="Request Failed" error="Post \"http://localhost:8000/v1/authorizations\": read tcp 127.0.0.1:56326->127.0.0.1:8000: read: connection reset by peer"
+time="2026-09-25T03:40:51-07:00" level=error msg="unexpected status 0: null" source=console
+time="2026-09-25T03:40:51-07:00" level=error msg="unexpected status 0: null" source=console
+time="2026-09-25T03:40:51-07:00" level=error msg="unexpected status 0: null" source=console
+time="2026-09-25T03:40:51-07:00" level=error msg="unexpected status 0: null" source=console
+time="2026-09-25T03:40:51-07:00" level=warning msg="Request Failed" error="Post \"http://localhost:8000/v1/authorizations\": read tcp 127.0.0.1:56331->127.0.0.1:8000: read: connection reset by peer"
+time="2026-09-25T03:40:51-07:00" level=error msg="unexpected status 0: null" source=console
+time="2026-09-25T03:40:51-07:00" level=warning msg="Request Failed" error="Post \"http://localhost:8000/v1/authorizations\": read tcp 127.0.0.1:56336->127.0.0.1:8000: read: connection reset by peer"
+time="2026-09-25T03:40:51-07:00" level=error msg="unexpected status 0: null" source=console
+time="2026-09-25T03:40:51-07:00" level=warning msg="Request Failed" error="Post \"http://localhost:8000/v1/authorizations\": read tcp 127.0.0.1:56335->127.0.0.1:8000: read: connection reset by peer"
+time="2026-09-25T03:40:51-07:00" level=error msg="unexpected status 0: null" source=console
+
+running (0m34.0s), 046/060 VUs, 581 complete and 0 interrupted iterations
+retry_storm   [  34% ] 046/060 VUs  0m34.0s/1m40s  33.99 iters/s
+
+running (0m35.0s), 001/060 VUs, 661 complete and 0 interrupted iterations
+retry_storm   [  35% ] 001/060 VUs  0m35.0s/1m40s  35.00 iters/s
+
+running (0m36.0s), 001/060 VUs, 696 complete and 0 interrupted iterations
+retry_storm   [  36% ] 001/060 VUs  0m36.0s/1m40s  35.99 iters/s
+
+running (0m37.0s), 000/060 VUs, 734 complete and 0 interrupted iterations
+retry_storm   [  37% ] 000/060 VUs  0m37.0s/1m40s  37.00 iters/s
+
+running (0m38.0s), 000/060 VUs, 771 complete and 0 interrupted iterations
+retry_storm   [  38% ] 000/060 VUs  0m38.0s/1m40s  37.99 iters/s
+
+running (0m39.0s), 001/060 VUs, 809 complete and 0 interrupted iterations
+retry_storm   [  39% ] 001/060 VUs  0m39.0s/1m40s  39.00 iters/s
+
+running (0m40.0s), 000/060 VUs, 849 complete and 0 interrupted iterations
+retry_storm   [  40% ] 000/060 VUs  0m40.0s/1m40s  39.99 iters/s
+
+running (0m41.0s), 002/060 VUs, 887 complete and 0 interrupted iterations
+retry_storm   [  41% ] 002/060 VUs  0m41.0s/1m40s  40.16 iters/s
+
+running (0m42.0s), 000/060 VUs, 929 complete and 0 interrupted iterations
+retry_storm   [  42% ] 000/060 VUs  0m42.0s/1m40s  40.33 iters/s
+
+running (0m43.0s), 000/060 VUs, 970 complete and 0 interrupted iterations
+retry_storm   [  43% ] 000/060 VUs  0m43.0s/1m40s  40.50 iters/s
+
+running (0m44.0s), 001/060 VUs, 1010 complete and 0 interrupted iterations
+retry_storm   [  44% ] 001/060 VUs  0m44.0s/1m40s  40.67 iters/s
+
+running (0m45.0s), 022/060 VUs, 1029 complete and 0 interrupted iterations
+retry_storm   [  45% ] 023/060 VUs  0m45.0s/1m40s  40.84 iters/s
+
+running (0m46.0s), 000/060 VUs, 1092 complete and 0 interrupted iterations
+retry_storm   [  46% ] 000/060 VUs  0m46.0s/1m40s  41.00 iters/s
+
+running (0m47.0s), 000/060 VUs, 1133 complete and 0 interrupted iterations
+retry_storm   [  47% ] 000/060 VUs  0m47.0s/1m40s  41.16 iters/s
+
+running (0m48.0s), 001/060 VUs, 1174 complete and 0 interrupted iterations
+retry_storm   [  48% ] 001/060 VUs  0m48.0s/1m40s  41.33 iters/s
+
+running (0m49.0s), 001/060 VUs, 1215 complete and 0 interrupted iterations
+retry_storm   [  49% ] 001/060 VUs  0m49.0s/1m40s  41.50 iters/s
+
+running (0m50.0s), 001/060 VUs, 1257 complete and 0 interrupted iterations
+retry_storm   [  50% ] 001/060 VUs  0m50.0s/1m40s  41.67 iters/s
+
+running (0m51.0s), 020/060 VUs, 1279 complete and 0 interrupted iterations
+retry_storm   [  51% ] 020/060 VUs  0m51.0s/1m40s  41.83 iters/s
+
+running (0m52.0s), 001/060 VUs, 1340 complete and 0 interrupted iterations
+retry_storm   [  52% ] 001/060 VUs  0m52.0s/1m40s  42.00 iters/s
+
+running (0m53.0s), 001/060 VUs, 1382 complete and 0 interrupted iterations
+retry_storm   [  53% ] 001/060 VUs  0m53.0s/1m40s  42.16 iters/s
+
+running (0m54.0s), 000/060 VUs, 1425 complete and 0 interrupted iterations
+retry_storm   [  54% ] 000/060 VUs  0m54.0s/1m40s  42.33 iters/s
+
+running (0m55.0s), 001/060 VUs, 1467 complete and 0 interrupted iterations
+retry_storm   [  55% ] 001/060 VUs  0m55.0s/1m40s  42.50 iters/s
+
+running (0m56.0s), 000/060 VUs, 1510 complete and 0 interrupted iterations
+retry_storm   [  56% ] 000/060 VUs  0m56.0s/1m40s  42.66 iters/s
+
+running (0m57.0s), 000/060 VUs, 1553 complete and 0 interrupted iterations
+retry_storm   [  57% ] 000/060 VUs  0m57.0s/1m40s  42.83 iters/s
+
+running (0m58.0s), 000/060 VUs, 1596 complete and 0 interrupted iterations
+retry_storm   [  58% ] 000/060 VUs  0m58.0s/1m40s  43.00 iters/s
+
+running (0m59.0s), 001/060 VUs, 1638 complete and 0 interrupted iterations
+retry_storm   [  59% ] 001/060 VUs  0m59.0s/1m40s  43.16 iters/s
+
+running (1m00.0s), 000/060 VUs, 1682 complete and 0 interrupted iterations
+retry_storm   [  60% ] 000/060 VUs  1m00.0s/1m40s  43.33 iters/s
+
+running (1m01.0s), 001/060 VUs, 1725 complete and 0 interrupted iterations
+retry_storm   [  61% ] 001/060 VUs  1m01.0s/1m40s  43.50 iters/s
+
+running (1m02.0s), 000/060 VUs, 1769 complete and 0 interrupted iterations
+retry_storm   [  62% ] 000/060 VUs  1m02.0s/1m40s  43.66 iters/s
+
+running (1m03.0s), 001/060 VUs, 1812 complete and 0 interrupted iterations
+retry_storm   [  63% ] 001/060 VUs  1m03.0s/1m40s  43.83 iters/s
+
+running (1m04.0s), 000/060 VUs, 1857 complete and 0 interrupted iterations
+retry_storm   [  64% ] 000/060 VUs  1m04.0s/1m40s  44.00 iters/s
+
+running (1m05.0s), 004/060 VUs, 1897 complete and 0 interrupted iterations
+retry_storm   [  65% ] 004/060 VUs  1m05.0s/1m40s  44.16 iters/s
+
+running (1m06.0s), 002/060 VUs, 1944 complete and 0 interrupted iterations
+retry_storm   [  66% ] 002/060 VUs  1m06.0s/1m40s  44.33 iters/s
+
+running (1m07.0s), 001/060 VUs, 1989 complete and 0 interrupted iterations
+retry_storm   [  67% ] 001/060 VUs  1m07.0s/1m40s  44.50 iters/s
+
+running (1m08.0s), 000/060 VUs, 2034 complete and 0 interrupted iterations
+retry_storm   [  68% ] 000/060 VUs  1m08.0s/1m40s  44.67 iters/s
+
+running (1m09.0s), 000/060 VUs, 2079 complete and 0 interrupted iterations
+retry_storm   [  69% ] 000/060 VUs  1m09.0s/1m40s  44.83 iters/s
+
+running (1m10.0s), 035/060 VUs, 2089 complete and 0 interrupted iterations
+retry_storm   [  70% ] 035/060 VUs  1m10.0s/1m40s  45.00 iters/s
+
+running (1m11.0s), 032/060 VUs, 2137 complete and 0 interrupted iterations
+retry_storm   [  71% ] 032/060 VUs  1m11.0s/1m40s  45.16 iters/s
+
+running (1m12.0s), 001/060 VUs, 2214 complete and 0 interrupted iterations
+retry_storm   [  72% ] 001/060 VUs  1m12.0s/1m40s  45.33 iters/s
+
+running (1m13.0s), 001/060 VUs, 2259 complete and 0 interrupted iterations
+retry_storm   [  73% ] 001/060 VUs  1m13.0s/1m40s  45.50 iters/s
+
+running (1m14.0s), 001/060 VUs, 2304 complete and 0 interrupted iterations
+retry_storm   [  74% ] 001/060 VUs  1m14.0s/1m40s  45.66 iters/s
+
+running (1m15.0s), 001/060 VUs, 2350 complete and 0 interrupted iterations
+retry_storm   [  75% ] 001/060 VUs  1m15.0s/1m40s  45.83 iters/s
+
+running (1m16.0s), 000/060 VUs, 2397 complete and 0 interrupted iterations
+retry_storm   [  76% ] 000/060 VUs  1m16.0s/1m40s  46.00 iters/s
+
+running (1m17.0s), 028/060 VUs, 2415 complete and 0 interrupted iterations
+retry_storm   [  77% ] 028/060 VUs  1m17.0s/1m40s  46.16 iters/s
+
+running (1m18.0s), 014/060 VUs, 2475 complete and 0 interrupted iterations
+retry_storm   [  78% ] 014/060 VUs  1m18.0s/1m40s  46.33 iters/s
+
+running (1m19.0s), 000/060 VUs, 2536 complete and 0 interrupted iterations
+retry_storm   [  79% ] 000/060 VUs  1m19.0s/1m40s  46.50 iters/s
+
+running (1m20.0s), 000/060 VUs, 2582 complete and 0 interrupted iterations
+retry_storm   [  80% ] 000/060 VUs  1m20.0s/1m40s  46.66 iters/s
+
+running (1m21.0s), 001/060 VUs, 2628 complete and 0 interrupted iterations
+retry_storm   [  81% ] 001/060 VUs  1m21.0s/1m40s  46.83 iters/s
+
+running (1m22.0s), 007/060 VUs, 2669 complete and 0 interrupted iterations
+retry_storm   [  82% ] 007/060 VUs  1m22.0s/1m40s  47.00 iters/s
+
+running (1m23.0s), 002/060 VUs, 2721 complete and 0 interrupted iterations
+retry_storm   [  83% ] 002/060 VUs  1m23.0s/1m40s  47.16 iters/s
+
+running (1m24.0s), 000/060 VUs, 2770 complete and 0 interrupted iterations
+retry_storm   [  84% ] 000/060 VUs  1m24.0s/1m40s  47.33 iters/s
+
+running (1m25.0s), 002/060 VUs, 2816 complete and 0 interrupted iterations
+retry_storm   [  85% ] 002/060 VUs  1m25.0s/1m40s  47.50 iters/s
+
+running (1m26.0s), 003/060 VUs, 2862 complete and 0 interrupted iterations
+retry_storm   [  86% ] 003/060 VUs  1m26.0s/1m40s  47.66 iters/s
+
+running (1m27.0s), 000/060 VUs, 2913 complete and 0 interrupted iterations
+retry_storm   [  87% ] 000/060 VUs  1m27.0s/1m40s  47.83 iters/s
+
+running (1m28.0s), 001/060 VUs, 2960 complete and 0 interrupted iterations
+retry_storm   [  88% ] 001/060 VUs  1m28.0s/1m40s  48.00 iters/s
+
+running (1m29.0s), 000/060 VUs, 3009 complete and 0 interrupted iterations
+retry_storm   [  89% ] 000/060 VUs  1m29.0s/1m40s  48.16 iters/s
+
+running (1m30.0s), 000/060 VUs, 3057 complete and 0 interrupted iterations
+retry_storm   [  90% ] 000/060 VUs  1m30.0s/1m40s  48.33 iters/s
+
+running (1m31.0s), 002/060 VUs, 3104 complete and 0 interrupted iterations
+retry_storm   [  91% ] 002/060 VUs  1m31.0s/1m40s  48.50 iters/s
+
+running (1m32.0s), 002/060 VUs, 3152 complete and 0 interrupted iterations
+retry_storm   [  92% ] 002/060 VUs  1m32.0s/1m40s  48.66 iters/s
+
+running (1m33.0s), 001/060 VUs, 3202 complete and 0 interrupted iterations
+retry_storm   [  93% ] 001/060 VUs  1m33.0s/1m40s  48.83 iters/s
+
+running (1m34.0s), 000/060 VUs, 3252 complete and 0 interrupted iterations
+retry_storm   [  94% ] 000/060 VUs  1m34.0s/1m40s  49.00 iters/s
+
+running (1m35.0s), 000/060 VUs, 3301 complete and 0 interrupted iterations
+retry_storm   [  95% ] 000/060 VUs  1m35.0s/1m40s  49.16 iters/s
+
+running (1m36.0s), 003/060 VUs, 3347 complete and 0 interrupted iterations
+retry_storm   [  96% ] 003/060 VUs  1m36.0s/1m40s  49.33 iters/s
+
+running (1m37.0s), 000/060 VUs, 3400 complete and 0 interrupted iterations
+retry_storm   [  97% ] 000/060 VUs  1m37.0s/1m40s  49.50 iters/s
+
+running (1m38.0s), 000/060 VUs, 3449 complete and 0 interrupted iterations
+retry_storm   [  98% ] 000/060 VUs  1m38.0s/1m40s  49.66 iters/s
+
+running (1m39.0s), 000/060 VUs, 3499 complete and 0 interrupted iterations
+retry_storm   [  99% ] 000/060 VUs  1m39.0s/1m40s  49.83 iters/s
+
+running (1m40.0s), 001/060 VUs, 3548 complete and 0 interrupted iterations
+retry_storm   [ 100% ] 001/060 VUs  1m40.0s/1m40s  50.00 iters/s
+time="2026-09-25T03:41:58-07:00" level=error msg="TypeError: Cannot read property 'toFixed' of undefined or null\n\tat summaryFor (file:///Users/abhiramkasireddi/CardGuard/loadtest/common.js:80:45(109))\n\tat handleSummary (file:///Users/abhiramkasireddi/CardGuard/loadtest/scenario_b.js:53:20(5))\n" hint="script exception" source=stacktrace
+
+
+  █ THRESHOLDS 
+
+    http_req_duration
+    ✗ 'p(99)<500' p(99)=1.21s
+
+    http_req_failed
+    ✓ 'rate<0.01' rate=0.39%
+
+
+  █ TOTAL RESULTS 
+
+    CUSTOM
+    idempotent_replays.............: 648    6.479102/s
+
+    HTTP
+    http_req_duration..............: avg=79.44ms min=1.42ms med=19.85ms max=2.05s p(90)=138.11ms p(95)=476.1ms  p(99)=1.21s
+      { expected_response:true }...: avg=78.27ms min=1.42ms med=19.82ms max=2.05s p(90)=129.46ms p(95)=466.2ms  p(99)=1.21s
+    http_req_failed................: 0.39%  14 out of 3550
+    http_reqs......................: 3550   35.495078/s
+
+    EXECUTION
+    iteration_duration.............: avg=80.68ms min=1.5ms  med=20.16ms max=2.05s p(90)=141.97ms p(95)=486.52ms p(99)=1.22s
+    iterations.....................: 3550   35.495078/s
+    vus............................: 1      min=0          max=46
+    vus_max........................: 60     min=60         max=60
+
+    NETWORK
+    data_received..................: 1.1 MB 11 kB/s
+    data_sent......................: 1.2 MB 12 kB/s
+
+
+
+
+running (1m40.0s), 000/060 VUs, 3550 complete and 0 interrupted iterations
+retry_storm ✓ [ 100% ] 000/060 VUs  1m40s  50.00 iters/s
+time="2026-09-25T03:41:58-07:00" level=error msg="thresholds on metrics 'http_req_duration' have been crossed"

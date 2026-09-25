@@ -18,7 +18,10 @@ class Card(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     employee_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("employee.id", ondelete="CASCADE"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("employee.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     last_four: Mapped[str] = mapped_column(String(4), nullable=False)
     token: Mapped[str] = mapped_column(

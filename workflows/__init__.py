@@ -1,11 +1,12 @@
 from temporalio.workflow import unsafe as workflow_unsafe
 
 with workflow_unsafe.imports_passed_through():
-    import app.config  # noqa: F401
-    import app.db  # noqa: F401
-    import app.ledger  # noqa: F401
-    import app.models  # noqa: F401
     import sqlalchemy  # noqa: F401
+
+    import app.config
+    import app.db
+    import app.ledger
+    import app.models  # noqa: F401
     from workflows.activities import (
         ACTIVITY_RETRY_POLICY,
         ValidationError,

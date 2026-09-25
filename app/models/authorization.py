@@ -49,13 +49,20 @@ class Authorization(Base):
         String(64), nullable=False, unique=True
     )
     card_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("card.id", ondelete="RESTRICT"), nullable=False, index=True
+        BigInteger,
+        ForeignKey("card.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
     )
     merchant_name: Mapped[str] = mapped_column(String(255), nullable=False)
     mcc: Mapped[str] = mapped_column(String(4), nullable=False)
     amount_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
     status: Mapped[AuthorizationStatus] = mapped_column(
-        Enum(AuthorizationStatus, name="authorization_status", values_callable=enum_values),
+        Enum(
+            AuthorizationStatus,
+            name="authorization_status",
+            values_callable=enum_values,
+        ),
         nullable=False,
         default=AuthorizationStatus.pending_review,
     )
@@ -69,5 +76,9 @@ class Authorization(Base):
     )
 
     card: Mapped["Card"] = relationship(back_populates="authorizations")
-    ledger_entries: Mapped[list["LedgerEntry"]] = relationship(back_populates="authorization")
-    postings: Mapped[list["LedgerPosting"]] = relationship(back_populates="authorization")
+    ledger_entries: Mapped[list["LedgerEntry"]] = relationship(
+        back_populates="authorization"
+    )
+    postings: Mapped[list["LedgerPosting"]] = relationship(
+        back_populates="authorization"
+    )

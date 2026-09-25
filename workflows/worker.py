@@ -6,7 +6,11 @@ from temporalio.client import Client
 from temporalio.worker import Worker
 
 from workflows import HoldExpiryWorkflow, ReviewWorkflow
-from workflows.activities import finalize_decline, post_review_hold, release_expired_hold
+from workflows.activities import (
+    finalize_decline,
+    post_review_hold,
+    release_expired_hold,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("cardguard.worker")

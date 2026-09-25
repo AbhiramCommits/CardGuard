@@ -1,9 +1,7 @@
-import asyncio
 import os
 import threading
 from datetime import timedelta
 
-from sqlalchemy import select
 from temporalio import activity
 from temporalio.common import RetryPolicy
 

@@ -16,7 +16,10 @@ class SpendPolicy(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     employee_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("employee.id", ondelete="CASCADE"), nullable=False, unique=True
+        BigInteger,
+        ForeignKey("employee.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
     )
     monthly_limit_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)
     per_transaction_limit_cents: Mapped[int] = mapped_column(BigInteger, nullable=False)

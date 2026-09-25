@@ -10,3 +10,6 @@ build/
 dist/
 ml/data/
 ml/artifacts/*.joblib
+ml/data/
+ml/artifacts/*.joblib
+loadtest/results/loadtest-config.json

@@ -1,14 +1,19 @@
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import Any
 
-from sqlalchemy import BigInteger, DateTime, Integer, String, UniqueConstraint, func, text
+from sqlalchemy import (
+    BigInteger,
+    DateTime,
+    Integer,
+    String,
+    UniqueConstraint,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
-
-if TYPE_CHECKING:
-    pass
 
 
 class IdempotencyRecord(Base):
@@ -21,13 +26,19 @@ class IdempotencyRecord(Base):
     idempotency_key: Mapped[str] = mapped_column(String(64), nullable=False)
     request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     status: Mapped[str] = mapped_column(
-        String(16), nullable=False, default="completed", server_default=text("'completed'")
+        String(16),
+        nullable=False,
+        default="completed",
+        server_default=text("'completed'"),
     )
     status_code: Mapped[int] = mapped_column(Integer, nullable=False)
-    response_body: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    response_body: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )

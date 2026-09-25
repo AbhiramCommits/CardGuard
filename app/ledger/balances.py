@@ -1,13 +1,22 @@
+from typing import Any
+
 from sqlalchemy import BigInteger, case, cast, func, select
+from sqlalchemy.orm import Session
 
 from app.models import Direction, LedgerEntry
 
 
-def _totals(session, *filters):
+def _totals(session: Session, *filters: Any) -> tuple[int, int]:
     debit_expr = func.coalesce(
         cast(
             func.sum(
-                case((LedgerEntry.direction == Direction.debit, LedgerEntry.amount_cents), else_=0)
+                case(
+                    (
+                        LedgerEntry.direction == Direction.debit,
+                        LedgerEntry.amount_cents,
+                    ),
+                    else_=0,
+                )
             ),
             BigInteger,
         ),
@@ -16,7 +25,13 @@ def _totals(session, *filters):
     credit_expr = func.coalesce(
         cast(
             func.sum(
-                case((LedgerEntry.direction == Direction.credit, LedgerEntry.amount_cents), else_=0)
+                case(
+                    (
+                        LedgerEntry.direction == Direction.credit,
+                        LedgerEntry.amount_cents,
+                    ),
+                    else_=0,
+                )
             ),
             BigInteger,
         ),
@@ -26,11 +41,11 @@ def _totals(session, *filters):
     return int(row[0]), int(row[1])
 
 
-def account_balance(session, account_id):
+def account_balance(session: Session, account_id: int) -> int:
     debits, credits = _totals(session, LedgerEntry.account_id == account_id)
     return debits - credits
 
 
-def authorization_net(session, authorization_id):
+def authorization_net(session: Session, authorization_id: int) -> int:
     debits, credits = _totals(session, LedgerEntry.authorization_id == authorization_id)
     return debits - credits

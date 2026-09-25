@@ -23,20 +23,28 @@ def _entries(session, authorization_id):
 
 
 def _group_totals(entries):
-    debits = sum(entry.amount_cents for entry in entries if entry.direction is Direction.debit)
-    credits = sum(entry.amount_cents for entry in entries if entry.direction is Direction.credit)
+    debits = sum(
+        entry.amount_cents for entry in entries if entry.direction is Direction.debit
+    )
+    credits = sum(
+        entry.amount_cents for entry in entries if entry.direction is Direction.credit
+    )
     return debits, credits
 
 
 def _accounts_by_type(session, company_id):
     from app.models import Account
 
-    accounts = session.scalars(select(Account).where(Account.company_id == company_id)).all()
+    accounts = session.scalars(
+        select(Account).where(Account.company_id == company_id)
+    ).all()
     return {account.account_type: account for account in accounts}
 
 
 def test_post_hold_balances_to_zero_net(session, company, authorization):
-    result = post_hold(session, authorization.id, amount_cents=10_000, idempotency_key="hold-1")
+    result = post_hold(
+        session, authorization.id, amount_cents=10_000, idempotency_key="hold-1"
+    )
 
     assert result.replayed is False
     entries = _entries(session, authorization.id)
@@ -48,13 +56,17 @@ def test_post_hold_balances_to_zero_net(session, company, authorization):
 
     accounts = _accounts_by_type(session, company.id)
     assert account_balance(session, accounts[AccountType.holds].id) == 10_000
-    assert account_balance(session, accounts[AccountType.available_credit].id) == -10_000
+    assert (
+        account_balance(session, accounts[AccountType.available_credit].id) == -10_000
+    )
     assert account_balance(session, accounts[AccountType.settled].id) == 0
 
 
 def test_idempotent_replay_creates_exactly_one_posting(session, authorization):
     results = [
-        post_hold(session, authorization.id, amount_cents=10_000, idempotency_key="hold-idem")
+        post_hold(
+            session, authorization.id, amount_cents=10_000, idempotency_key="hold-idem"
+        )
         for _ in range(5)
     ]
 

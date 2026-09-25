@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: cardguard
+          POSTGRES_PASSWORD: cardguard
+          POSTGRES_DB: cardguard
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cardguard -d cardguard"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      temporal:
+        image: temporalio/auto-setup:1.27.0
+        env:
+          DB: postgres12
+          DB_PORT: 5432
+          POSTGRES_USER: cardguard
+          POSTGRES_PWD: cardguard
+          POSTGRES_SEEDS: postgres
+          DBNAME: temporal
+        ports:
+          - 7233:7233
+    env:
+      DATABASE_URL: postgresql+psycopg://cardguard:cardguard@localhost:5432/cardguard
+      TEST_DATABASE_URL: postgresql+psycopg://cardguard:cardguard@localhost:5432/cardguard_test
+      TEMPORAL_HOST: localhost:7233
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Create test database
+        run: |
+          PGPASSWORD=cardguard psql -h localhost -U cardguard -d postgres \
+            -tc "SELECT 1 FROM pg_database WHERE datname = 'cardguard_test'" | grep -q 1 \
+            || PGPASSWORD=cardguard createdb -h localhost -U cardguard cardguard_test
+
+      - name: Run migrations
+        run: uv run alembic upgrade head
+
+      - name: Lint
+        run: |
+          uv run ruff check app workflows tests loadtest scripts ml
+          uv run ruff format --check app workflows tests loadtest scripts ml
+          uv run mypy --strict app
+
+      - name: Test with coverage gate
+        run: uv run pytest --cov=app --cov=workflows --cov-fail-under=80
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -f docker/Dockerfile -t cardguard:ci .

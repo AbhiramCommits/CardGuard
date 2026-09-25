@@ -1,0 +1,17 @@
+{
+  "scenario": "scenario_b",
+  "latency_ms": {
+    "p50": 19.85,
+    "p95": 476.1,
+    "p99": 1210.0,
+    "max": 2050.0
+  },
+  "requests": 3550,
+  "rps": 35.495078,
+  "error_rate": 0.003944,
+  "failed": 14,
+  "replays": 648,
+  "dropped_iterations": 0,
+  "decision_mix": null,
+  "description": "Retry storm: 20% of requests replay a previously used idempotency key. Same ramp profile as scenario A."
+}

@@ -1,6 +1,7 @@
 import json
 import logging
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
 
 BUDGET_MS = 250.0
@@ -9,23 +10,23 @@ logger = logging.getLogger("cardguard")
 
 
 class StageTimer:
-    def __init__(self, event):
+    def __init__(self, event: str) -> None:
         self.event = event
         self._start = time.perf_counter()
-        self._stages = {}
+        self._stages: dict[str, float] = {}
 
     @contextmanager
-    def stage(self, name):
+    def stage(self, name: str) -> Iterator[None]:
         start = time.perf_counter()
         try:
             yield
         finally:
             self._stages[name] = round((time.perf_counter() - start) * 1000, 3)
 
-    def elapsed_ms(self):
+    def elapsed_ms(self) -> float:
         return (time.perf_counter() - self._start) * 1000
 
-    def finish(self):
+    def finish(self) -> None:
         total_ms = round(self.elapsed_ms(), 3)
         event = {
             "event": self.event,

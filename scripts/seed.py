@@ -10,8 +10,18 @@ COMPANIES = ["Nimbus Systems", "Quarry Logistics", "Vertex Labs"]
 EMPLOYEES_PER_COMPANY = [9, 8, 8]
 TOTAL_EMPLOYEES = 25
 MCC_POOL = [
-    "5411", "5812", "5814", "5541", "4511", "4111",
-    "3504", "4411", "4722", "7832", "5462", "4121",
+    "5411",
+    "5812",
+    "5814",
+    "5541",
+    "4511",
+    "4111",
+    "3504",
+    "4411",
+    "4722",
+    "7832",
+    "5462",
+    "4121",
 ]
 
 
@@ -44,13 +54,18 @@ def seed(session):
             session.add(employee)
             session.flush()
             session.add(
-                Card(employee_id=employee.id, last_four=f"{counter:04d}", token=f"card_tok_{counter:04d}")
+                Card(
+                    employee_id=employee.id,
+                    last_four=f"{counter:04d}",
+                    token=f"card_tok_{counter:04d}",
+                )
             )
             session.add(
                 SpendPolicy(
                     employee_id=employee.id,
                     monthly_limit_cents=500_000 + rng.randrange(0, 500_000, 10_000),
-                    per_transaction_limit_cents=100_000 + rng.randrange(0, 400_000, 10_000),
+                    per_transaction_limit_cents=100_000
+                    + rng.randrange(0, 400_000, 10_000),
                     blocked_mccs=rng.sample(MCC_POOL, k=3),
                     velocity_max_auths=rng.choice([5, 10, 15, 20]),
                     velocity_window_minutes=rng.choice([5, 10, 15, 30, 60]),

@@ -1,6 +1,6 @@
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
@@ -25,7 +25,7 @@ def _payload(card, **overrides):
         "merchant_name": "TEST MERCHANT",
         "mcc": "5411",
         "amount_cents": 5_000,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
     payload.update(overrides)
     return payload
@@ -78,9 +78,14 @@ def test_approve_posts_hold_and_sets_expiry(app, session, card):
     assert authorization.status == AuthorizationStatus.approved
     assert str(authorization.public_id) == body["authorization_id"]
     assert authorization.expires_at is not None
-    assert abs(
-        (authorization.expires_at - (datetime.now(timezone.utc) + timedelta(days=7))).total_seconds()
-    ) < 60
+    assert (
+        abs(
+            (
+                authorization.expires_at - (datetime.now(UTC) + timedelta(days=7))
+            ).total_seconds()
+        )
+        < 60
+    )
 
     postings = _postings(session, authorization.id)
     assert [p.entry_type for p in postings] == [EntryType.hold]
@@ -249,7 +254,8 @@ def test_over_capture_rejected(app, card):
 
     assert (
         client.post(
-            f"/v1/authorizations/{authorization_id}/capture", json={"amount_cents": 10_000}
+            f"/v1/authorizations/{authorization_id}/capture",
+            json={"amount_cents": 10_000},
         ).status_code
         == 200
     )

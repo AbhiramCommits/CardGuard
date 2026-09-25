@@ -1,6 +1,6 @@
 import math
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -10,13 +10,30 @@ SEED = 42
 N_CARDS = 500
 N_TXNS = 200_000
 SPAN_DAYS = 180
-BASE_TS = datetime(2025, 6, 1, tzinfo=timezone.utc)
+BASE_TS = datetime(2025, 6, 1, tzinfo=UTC)
 OUT_PATH = Path(__file__).resolve().parent / "data" / "transactions.csv"
 
 MCC_POOL = [
-    "3000", "4111", "4511", "4722", "4900", "5411", "5462", "5541",
-    "5812", "5814", "5912", "5942", "5999", "7230", "7311", "7832",
-    "7997", "8062", "8099", "8398",
+    "3000",
+    "4111",
+    "4511",
+    "4722",
+    "4900",
+    "5411",
+    "5462",
+    "5541",
+    "5812",
+    "5814",
+    "5912",
+    "5942",
+    "5999",
+    "7230",
+    "7311",
+    "7832",
+    "7997",
+    "8062",
+    "8099",
+    "8398",
 ]
 MERCHANTS_PER_MCC = 60
 
@@ -56,7 +73,8 @@ def _build_card_profiles(rng):
         peak1 = rng.uniform(10.0, 17.0)
         peak2 = rng.uniform(8.0, 20.0)
         hour_weights = [
-            _gauss(h, peak1, 2.5) + 0.5 * _gauss(h, peak2, 3.5) + 0.02 for h in range(24)
+            _gauss(h, peak1, 2.5) + 0.5 * _gauss(h, peak2, 3.5) + 0.02
+            for h in range(24)
         ]
         merchant_pool = [
             (_merchant_name(mcc, k), _merchant_id(mcc, k))
@@ -67,14 +85,19 @@ def _build_card_profiles(rng):
         merchant_set = []
         for _ in range(n_merchants):
             mcc = _weighted_choice(rng, MCC_POOL, list(mcc_weights.values()))
-            merchant_set.append(rng.choice([m for m in merchant_pool if m[0].startswith(mcc)]))
+            merchant_set.append(
+                rng.choice([m for m in merchant_pool if m[0].startswith(mcc)])
+            )
         profiles[card_id] = {
             "favorites": set(favorites),
             "mcc_weights": mcc_weights,
             "amount_mean": amount_mean,
             "hour_weights": hour_weights,
             "merchant_set": set(merchant_set),
-            "merchants_by_mcc": {mcc: [m for m in merchant_pool if m[0].startswith(mcc)] for mcc in MCC_POOL},
+            "merchants_by_mcc": {
+                mcc: [m for m in merchant_pool if m[0].startswith(mcc)]
+                for mcc in MCC_POOL
+            },
         }
     return profiles
 
@@ -97,7 +120,9 @@ def generate():
             )
             amount = round(rng.lognormvariate(math.log(profile["amount_mean"]), 0.5))
             mcc = _weighted_choice(rng, MCC_POOL, list(profile["mcc_weights"].values()))
-            card_merchants = [m for m in profile["merchant_set"] if m[0].startswith(mcc)]
+            card_merchants = [
+                m for m in profile["merchant_set"] if m[0].startswith(mcc)
+            ]
             if card_merchants and rng.random() < 0.85:
                 name, mid = rng.choice(card_merchants)
             else:
@@ -120,7 +145,9 @@ def generate():
         for _ in range(n_fraud):
             anchor = None
             if rng.random() < 0.6:
-                anchor = rng.choice(rows[-300:]) if len(rows) > 300 else rng.choice(rows)
+                anchor = (
+                    rng.choice(rows[-300:]) if len(rows) > 300 else rng.choice(rows)
+                )
                 ts = anchor["ts"] + timedelta(seconds=rng.uniform(30, 120))
             else:
                 ts = BASE_TS + timedelta(
@@ -138,7 +165,11 @@ def generate():
                 name, mid = rng.choice(profile["merchants_by_mcc"][mcc])
             else:
                 name, mid = rng.choice(
-                    [m for m in profile["merchants_by_mcc"][mcc] if m not in profile["merchant_set"]]
+                    [
+                        m
+                        for m in profile["merchants_by_mcc"][mcc]
+                        if m not in profile["merchant_set"]
+                    ]
                     or profile["merchants_by_mcc"][mcc]
                 )
             fraud_rows.append(

@@ -1,10 +1,13 @@
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from hashlib import sha256
+from typing import Any
+from uuid import UUID
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, Response, current_app, jsonify, request
 from sqlalchemy import BigInteger, case, cast, func, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from app.ledger import post_capture, post_hold, post_hold_release, post_reversal
 from app.models import (
@@ -38,7 +41,14 @@ bp = Blueprint("authorizations_v1", __name__)
 
 HOLD_TTL_DAYS = 7
 HISTORY_LIMIT = 1000
-REQUIRED_FIELDS = ("idempotency_key", "card_token", "merchant_name", "mcc", "amount_cents", "timestamp")
+REQUIRED_FIELDS = (
+    "idempotency_key",
+    "card_token",
+    "merchant_name",
+    "mcc",
+    "amount_cents",
+    "timestamp",
+)
 
 DECISION_STATUS = {
     "approve": AuthorizationStatus.approved,
@@ -47,7 +57,7 @@ DECISION_STATUS = {
 }
 
 
-def _validate_payload(payload):
+def _validate_payload(payload: dict[str, Any]) -> str | None:
     missing = [field for field in REQUIRED_FIELDS if field not in payload]
     if missing:
         return f"missing fields: {', '.join(missing)}"
@@ -55,18 +65,18 @@ def _validate_payload(payload):
     if isinstance(amount, bool) or not isinstance(amount, int) or amount <= 0:
         return "amount_cents must be a positive integer"
     try:
-        datetime.fromisoformat(payload["timestamp"].replace("Z", "+00:00"))
+        datetime.fromisoformat(payload["timestamp"])
     except (TypeError, ValueError):
         return "timestamp must be ISO 8601"
     return None
 
 
-def _fingerprint(payload):
+def _fingerprint(payload: dict[str, Any]) -> str:
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def _monthly_used_cents(session, employee_id, now):
+def _monthly_used_cents(session: Session, employee_id: int, now: datetime) -> int:
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     total = session.scalar(
         select(
@@ -74,7 +84,10 @@ def _monthly_used_cents(session, employee_id, now):
                 cast(
                     func.sum(
                         case(
-                            (LedgerEntry.direction == Direction.debit, LedgerEntry.amount_cents),
+                            (
+                                LedgerEntry.direction == Direction.debit,
+                                LedgerEntry.amount_cents,
+                            ),
                             else_=-LedgerEntry.amount_cents,
                         )
                     ),
@@ -92,12 +105,14 @@ def _monthly_used_cents(session, employee_id, now):
             LedgerEntry.created_at >= month_start,
         )
     )
-    return int(total)
+    return int(total or 0)
 
 
-def _velocity_count(session, employee_id, window_minutes, now):
+def _velocity_count(
+    session: Session, employee_id: int, window_minutes: int, now: datetime
+) -> int:
     window_start = now - timedelta(minutes=window_minutes)
-    return session.scalar(
+    count = session.scalar(
         select(func.count(Authorization.id))
         .join(Card, Card.id == Authorization.card_id)
         .where(
@@ -105,15 +120,21 @@ def _velocity_count(session, employee_id, window_minutes, now):
             Authorization.created_at > window_start,
         )
     )
+    return int(count) if count else 0
 
 
-def _replay_response(record):
+def _replay_response(record: IdempotencyRecord) -> Response:
     response = jsonify(record.response_body)
     response.status_code = record.status_code
     return response
 
 
-def _log_and_return(timer, response, status_code=None, replay=False):
+def _log_and_return(
+    timer: StageTimer,
+    response: Response,
+    status_code: int | None = None,
+    replay: bool = False,
+) -> Response | tuple[Response, int]:
     if replay:
         response.headers["Idempotent-Replay"] = "true"
     timer.finish()
@@ -123,7 +144,7 @@ def _log_and_return(timer, response, status_code=None, replay=False):
 
 
 @bp.post("")
-def create_authorization():
+def create_authorization() -> Response | tuple[Response, int]:
     timer = StageTimer("authorization_decision")
     with timer.stage("request_parse"):
         payload = request.get_json(silent=True) or {}
@@ -146,13 +167,19 @@ def create_authorization():
             if record.request_fingerprint != fingerprint:
                 return _log_and_return(
                     timer,
-                    jsonify({"error": "idempotency key already used with a different request body"}),
+                    jsonify(
+                        {
+                            "error": "idempotency key already used with a different request body"
+                        }
+                    ),
                     409,
                 )
             return _log_and_return(timer, _replay_response(record), replay=True)
 
         with timer.stage("policy"):
-            card = session.scalar(select(Card).where(Card.token == payload["card_token"]))
+            card = session.scalar(
+                select(Card).where(Card.token == payload["card_token"])
+            )
             if card is None:
                 return _log_and_return(timer, jsonify({"error": "card not found"}), 404)
             employee = session.get(Employee, card.employee_id)
@@ -163,7 +190,7 @@ def create_authorization():
                 return _log_and_return(
                     timer, jsonify({"error": "no spend policy for card"}), 422
                 )
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             monthly_used = _monthly_used_cents(session, employee.id, now)
             velocity_count = _velocity_count(
                 session, employee.id, policy.velocity_window_minutes, now
@@ -227,7 +254,7 @@ def create_authorization():
             final_reason = policy_decision.reason_code.value
             risk_score = None
         else:
-            model_decision, model_reason, model_proba = model_result
+            model_decision, _, model_proba = model_result
             risk_score = round(model_proba * 100, 2)
             if model_decision == "decline":
                 final_decision = "decline"
@@ -297,7 +324,11 @@ def create_authorization():
             if record.request_fingerprint != fingerprint:
                 return _log_and_return(
                     timer,
-                    jsonify({"error": "idempotency key already used with a different request body"}),
+                    jsonify(
+                        {
+                            "error": "idempotency key already used with a different request body"
+                        }
+                    ),
                     409,
                 )
             return _log_and_return(timer, _replay_response(record), replay=True)
@@ -308,16 +339,18 @@ def create_authorization():
                 current_app.config["REVIEW_TIMEOUT_SECONDS"],
             )
         elif final_decision == "approve":
+            expires_at = authorization.expires_at
+            assert expires_at is not None
             start_hold_expiry_workflow(
                 authorization.id,
                 str(authorization.public_id),
-                authorization.expires_at.timestamp(),
+                expires_at.timestamp(),
             )
         return _log_and_return(timer, jsonify(response_body), 200)
 
 
 @bp.post("/<uuid:authorization_id>/capture")
-def capture_authorization(authorization_id):
+def capture_authorization(authorization_id: UUID) -> Response | tuple[Response, int]:
     payload = request.get_json(silent=True) or {}
     amount = payload.get("amount_cents")
     if isinstance(amount, bool) or not isinstance(amount, int) or amount <= 0:
@@ -335,7 +368,9 @@ def capture_authorization(authorization_id):
             AuthorizationStatus.captured,
         ):
             return jsonify(
-                {"error": f"cannot capture authorization in status {authorization.status.value}"}
+                {
+                    "error": f"cannot capture authorization in status {authorization.status.value}"
+                }
             ), 409
 
         hold_posting = session.scalar(
@@ -415,7 +450,7 @@ def capture_authorization(authorization_id):
 
 
 @bp.post("/<uuid:authorization_id>/reverse")
-def reverse_authorization(authorization_id):
+def reverse_authorization(authorization_id: UUID) -> Response | tuple[Response, int]:
     session_factory = current_app.extensions["session_factory"]
     with session_factory() as session:
         authorization = session.scalar(
@@ -429,7 +464,9 @@ def reverse_authorization(authorization_id):
             AuthorizationStatus.expired,
         ):
             return jsonify(
-                {"error": f"cannot reverse authorization in status {authorization.status.value}"}
+                {
+                    "error": f"cannot reverse authorization in status {authorization.status.value}"
+                }
             ), 409
         if authorization.status == AuthorizationStatus.reversed:
             return jsonify(
@@ -495,7 +532,7 @@ def reverse_authorization(authorization_id):
 
 
 @bp.post("/<uuid:authorization_id>/review-decision")
-def review_decision(authorization_id):
+def review_decision(authorization_id: UUID) -> Response | tuple[Response, int]:
     payload = request.get_json(silent=True) or {}
     decision = payload.get("decision")
     if decision not in ("approve", "decline"):
@@ -514,7 +551,7 @@ def review_decision(authorization_id):
 
 
 @bp.get("/<uuid:authorization_id>/review-status")
-def review_status(authorization_id):
+def review_status(authorization_id: UUID) -> Response | tuple[Response, int]:
     try:
         state = query_review_state(str(authorization_id))
     except WorkflowNotFoundError:
