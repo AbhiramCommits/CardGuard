@@ -22,11 +22,14 @@ from app.models import (
     SpendPolicy,
 )
 from app.observability import StageTimer
-from app.risk.policy import PolicyContext, evaluate_policy
+from app.risk.features import build_features
+from app.risk.model import risk_model
+from app.risk.policy import PolicyContext, ReasonCode, evaluate_policy
 
 bp = Blueprint("authorizations_v1", __name__)
 
 HOLD_TTL_DAYS = 7
+HISTORY_LIMIT = 1000
 REQUIRED_FIELDS = ("idempotency_key", "card_token", "merchant_name", "mcc", "amount_cents", "timestamp")
 
 DECISION_STATUS = {
@@ -157,7 +160,7 @@ def create_authorization():
             velocity_count = _velocity_count(
                 session, employee.id, policy.velocity_window_minutes, now
             )
-            decision = evaluate_policy(
+            policy_decision = evaluate_policy(
                 PolicyContext(
                     mcc=payload["mcc"],
                     amount_cents=payload["amount_cents"],
@@ -171,7 +174,66 @@ def create_authorization():
             )
 
         with timer.stage("model"):
-            pass
+            model_result = None
+            if policy_decision.decision != "decline" and risk_model.available:
+                history_rows = session.execute(
+                    select(
+                        Authorization.amount_cents,
+                        Authorization.mcc,
+                        Authorization.merchant_name,
+                        Authorization.created_at,
+                    )
+                    .where(
+                        Authorization.card_id == card.id,
+                        Authorization.created_at < now,
+                    )
+                    .order_by(Authorization.created_at.desc())
+                    .limit(HISTORY_LIMIT)
+                ).all()
+                history = [
+                    {
+                        "amount_cents": row.amount_cents,
+                        "mcc": row.mcc,
+                        "merchant_name": row.merchant_name,
+                        "ts": row.created_at,
+                    }
+                    for row in history_rows
+                ]
+                features = build_features(
+                    {
+                        "ts": now,
+                        "amount_cents": payload["amount_cents"],
+                        "mcc": payload["mcc"],
+                        "merchant_name": payload["merchant_name"],
+                    },
+                    history,
+                )
+                model_result = risk_model.decide(features)
+
+        if policy_decision.decision == "decline":
+            final_decision = "decline"
+            final_reason = policy_decision.reason_code.value
+            risk_score = 100.0
+        elif model_result is None:
+            final_decision = policy_decision.decision
+            final_reason = policy_decision.reason_code.value
+            risk_score = None
+        else:
+            model_decision, model_reason, model_proba = model_result
+            risk_score = round(model_proba * 100, 2)
+            if model_decision == "decline":
+                final_decision = "decline"
+                final_reason = ReasonCode.MODEL_HIGH_RISK.value
+            elif model_decision == "review":
+                final_decision = "review"
+                final_reason = (
+                    policy_decision.reason_code.value
+                    if policy_decision.decision == "review"
+                    else ReasonCode.MODEL_REVIEW.value
+                )
+            else:
+                final_decision = policy_decision.decision
+                final_reason = policy_decision.reason_code.value
 
         try:
             authorization = Authorization(
@@ -180,18 +242,18 @@ def create_authorization():
                 merchant_name=payload["merchant_name"],
                 mcc=payload["mcc"],
                 amount_cents=payload["amount_cents"],
-                status=DECISION_STATUS[decision.decision],
-                decision_reason=decision.reason_code.value,
-                risk_score=decision.risk_score,
+                status=DECISION_STATUS[final_decision],
+                decision_reason=final_reason,
+                risk_score=risk_score,
                 expires_at=now + timedelta(days=HOLD_TTL_DAYS)
-                if decision.decision == "approve"
+                if final_decision == "approve"
                 else None,
             )
             session.add(authorization)
             session.flush()
 
             with timer.stage("ledger"):
-                if decision.decision == "approve":
+                if final_decision == "approve":
                     post_hold(
                         session,
                         authorization.id,
@@ -202,9 +264,9 @@ def create_authorization():
 
             response_body = {
                 "authorization_id": str(authorization.public_id),
-                "decision": decision.decision,
-                "decision_reason": decision.reason_code.value,
-                "risk_score": decision.risk_score,
+                "decision": final_decision,
+                "decision_reason": final_reason,
+                "risk_score": risk_score,
                 "latency_ms": round(timer.elapsed_ms(), 3),
             }
             record = IdempotencyRecord(

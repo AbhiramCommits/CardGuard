@@ -18,6 +18,10 @@ def create_app(config_object=None):
     app.extensions["engine"] = engine
     app.extensions["session_factory"] = make_session_factory(engine)
 
+    from app.risk.model import risk_model
+
+    risk_model.load(app.config["MODEL_PATH"])
+
     from app.api import register_blueprints
 
     register_blueprints(app)

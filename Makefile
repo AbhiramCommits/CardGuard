@@ -1,4 +1,4 @@
-.PHONY: up down logs migrate migrate-new seed test psql
+.PHONY: up down logs migrate migrate-new seed test data train psql
 
 m ?= auto
 
@@ -23,6 +23,12 @@ seed:
 test:
 	docker compose up -d postgres
 	uv run pytest --cov=app --cov-report=term-missing
+
+data:
+	uv run python ml/generate_synthetic.py
+
+train:
+	uv run python ml/train.py
 
 psql:
 	docker compose exec postgres psql -U cardguard -d cardguard

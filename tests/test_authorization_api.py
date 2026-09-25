@@ -65,7 +65,7 @@ def test_approve_posts_hold_and_sets_expiry(app, session, card):
     body = response.get_json()
     assert body["decision"] == "approve"
     assert body["decision_reason"] == "APPROVED"
-    assert isinstance(body["risk_score"], float)
+    assert body["risk_score"] is None
     assert isinstance(body["latency_ms"], (int, float))
     UUID(body["authorization_id"])
 
