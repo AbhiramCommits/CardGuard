@@ -1,4 +1,5 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, current_app, jsonify
+from sqlalchemy import text
 
 bp = Blueprint("health", __name__)
 
@@ -6,3 +7,13 @@ bp = Blueprint("health", __name__)
 @bp.get("/healthz")
 def healthz():
     return jsonify({"status": "ok"})
+
+
+@bp.get("/readyz")
+def readyz():
+    try:
+        with current_app.extensions["engine"].connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception:
+        return jsonify({"status": "unavailable"}), 503
+    return jsonify({"status": "ready"})

@@ -89,7 +89,7 @@ class LedgerEntry(Base):
         Enum(EntryType, name="entry_type", values_callable=enum_values), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
+        DateTime(timezone=True), nullable=False, server_default=func.now(), index=True
     )
     posting_id: Mapped[int] = mapped_column(
         BigInteger,

@@ -89,6 +89,7 @@ def _post(
     amount_cents: int,
     idempotency_key: str,
     legs: list[tuple[Account, Direction, int]],
+    commit: bool = True,
 ) -> PostingResult:
     existing = _fetch_posting(session, idempotency_key)
     if existing is not None:
@@ -122,6 +123,16 @@ def _post(
         )
         session.add(entry)
         entries.append(entry)
+    if not commit:
+        return PostingResult(
+            posting_id=posting.id,
+            idempotency_key=idempotency_key,
+            authorization_id=authorization_id,
+            entry_type=entry_type,
+            amount_cents=amount_cents,
+            replayed=False,
+            entries=tuple(entries),
+        )
     try:
         session.commit()
     except IntegrityError:
@@ -149,6 +160,7 @@ def _posting(
     idempotency_key: str | None,
     debit_account: AccountType,
     credit_account: AccountType,
+    commit: bool = True,
 ) -> PostingResult:
     key = idempotency_key or f"{entry_type.value}-{authorization_id}-{uuid4().hex}"
     company = _company_for_authorization(session, authorization_id)
@@ -157,10 +169,10 @@ def _posting(
         (accounts[debit_account], Direction.debit, amount_cents),
         (accounts[credit_account], Direction.credit, amount_cents),
     ]
-    return _post(session, authorization_id, entry_type, amount_cents, key, legs)
+    return _post(session, authorization_id, entry_type, amount_cents, key, legs, commit=commit)
 
 
-def post_hold(session, authorization_id, amount_cents, idempotency_key=None):
+def post_hold(session, authorization_id, amount_cents, idempotency_key=None, commit=True):
     return _posting(
         session,
         authorization_id,
@@ -169,10 +181,11 @@ def post_hold(session, authorization_id, amount_cents, idempotency_key=None):
         idempotency_key,
         AccountType.holds,
         AccountType.available_credit,
+        commit=commit,
     )
 
 
-def post_capture(session, authorization_id, amount_cents, idempotency_key=None):
+def post_capture(session, authorization_id, amount_cents, idempotency_key=None, commit=True):
     return _posting(
         session,
         authorization_id,
@@ -181,10 +194,11 @@ def post_capture(session, authorization_id, amount_cents, idempotency_key=None):
         idempotency_key,
         AccountType.settled,
         AccountType.holds,
+        commit=commit,
     )
 
 
-def post_reversal(session, authorization_id, amount_cents, idempotency_key=None):
+def post_reversal(session, authorization_id, amount_cents, idempotency_key=None, commit=True):
     return _posting(
         session,
         authorization_id,
@@ -193,10 +207,11 @@ def post_reversal(session, authorization_id, amount_cents, idempotency_key=None)
         idempotency_key,
         AccountType.available_credit,
         AccountType.settled,
+        commit=commit,
     )
 
 
-def post_hold_release(session, authorization_id, amount_cents, idempotency_key=None):
+def post_hold_release(session, authorization_id, amount_cents, idempotency_key=None, commit=True):
     return _posting(
         session,
         authorization_id,
@@ -205,4 +220,5 @@ def post_hold_release(session, authorization_id, amount_cents, idempotency_key=N
         idempotency_key,
         AccountType.available_credit,
         AccountType.holds,
+        commit=commit,
     )

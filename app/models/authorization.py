@@ -1,4 +1,5 @@
 import enum
+import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -9,7 +10,9 @@ from sqlalchemy import (
     Enum,
     Float,
     ForeignKey,
+    Index,
     String,
+    Uuid,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -34,9 +37,14 @@ class Authorization(Base):
     __tablename__ = "authorization"
     __table_args__ = (
         CheckConstraint("amount_cents > 0", name="ck_authorization_amount_positive"),
+        Index("ix_authorization_card_id_created_at", "card_id", "created_at"),
+        Index("ix_authorization_public_id", "public_id", unique=True),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    public_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, nullable=False, default=uuid.uuid4
+    )
     idempotency_key: Mapped[str] = mapped_column(
         String(64), nullable=False, unique=True
     )

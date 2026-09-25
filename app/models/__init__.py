@@ -4,6 +4,7 @@ from app.models.base import Base
 from app.models.card import Card
 from app.models.company import Company
 from app.models.employee import Employee
+from app.models.idempotency import IdempotencyRecord
 from app.models.ledger import Direction, EntryType, LedgerEntry, LedgerPosting
 from app.models.spend_policy import SpendPolicy
 
@@ -18,6 +19,7 @@ __all__ = [
     "Direction",
     "Employee",
     "EntryType",
+    "IdempotencyRecord",
     "LedgerEntry",
     "LedgerPosting",
     "SpendPolicy",

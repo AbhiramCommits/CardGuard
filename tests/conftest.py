@@ -104,8 +104,10 @@ def authorization(session, card):
     return authorization
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def app():
     from app import create_app
 
-    return create_app("app.config.TestingConfig")
+    application = create_app("app.config.TestingConfig")
+    yield application
+    application.extensions["engine"].dispose()

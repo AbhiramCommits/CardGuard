@@ -43,7 +43,9 @@ def seed(session):
             )
             session.add(employee)
             session.flush()
-            session.add(Card(employee_id=employee.id, last_four=f"{counter:04d}"))
+            session.add(
+                Card(employee_id=employee.id, last_four=f"{counter:04d}", token=f"card_tok_{counter:04d}")
+            )
             session.add(
                 SpendPolicy(
                     employee_id=employee.id,
