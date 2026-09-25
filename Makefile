@@ -1,4 +1,4 @@
-.PHONY: up down logs migrate migrate-new seed test data train demo loadtest psql
+.PHONY: up down logs migrate migrate-new seed test data train demo demo-crash loadtest psql
 
 m ?= auto
 
@@ -31,6 +31,9 @@ train:
 	uv run python ml/train.py
 
 demo:
+	bash scripts/demo.sh
+
+demo-crash:
 	bash scripts/demo_crash_recovery.sh
 
 loadtest:

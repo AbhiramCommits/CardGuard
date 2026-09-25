@@ -31,8 +31,11 @@ def _payload(card, **overrides):
     return payload
 
 
+API_HEADERS = {"X-Api-Key": "test-key"}
+
+
 def _post(client, payload):
-    return client.post("/v1/authorizations", json=payload)
+    return client.post("/v1/authorizations", json=payload, headers=API_HEADERS)
 
 
 def _policy(session, card):
@@ -227,7 +230,9 @@ def test_partial_capture(app, session, card, company):
     authorization_id = _post(app.test_client(), payload).get_json()["authorization_id"]
 
     response = app.test_client().post(
-        f"/v1/authorizations/{authorization_id}/capture", json={"amount_cents": 6_000}
+        f"/v1/authorizations/{authorization_id}/capture",
+        json={"amount_cents": 6_000},
+        headers=API_HEADERS,
     )
     assert response.status_code == 200
     result = response.get_json()
@@ -247,7 +252,9 @@ def test_over_capture_rejected(app, card):
     client = app.test_client()
 
     response = client.post(
-        f"/v1/authorizations/{authorization_id}/capture", json={"amount_cents": 12_000}
+        f"/v1/authorizations/{authorization_id}/capture",
+        json={"amount_cents": 12_000},
+        headers=API_HEADERS,
     )
     assert response.status_code == 409
     assert response.get_json()["held_amount_cents"] == 10_000
@@ -256,11 +263,14 @@ def test_over_capture_rejected(app, card):
         client.post(
             f"/v1/authorizations/{authorization_id}/capture",
             json={"amount_cents": 10_000},
+            headers=API_HEADERS,
         ).status_code
         == 200
     )
     second = client.post(
-        f"/v1/authorizations/{authorization_id}/capture", json={"amount_cents": 5_000}
+        f"/v1/authorizations/{authorization_id}/capture",
+        json={"amount_cents": 5_000},
+        headers=API_HEADERS,
     )
     assert second.status_code == 409
 
@@ -269,7 +279,9 @@ def test_reverse_authorization(app, session, card, company):
     payload = _payload(card, amount_cents=10_000)
     authorization_id = _post(app.test_client(), payload).get_json()["authorization_id"]
 
-    response = app.test_client().post(f"/v1/authorizations/{authorization_id}/reverse")
+    response = app.test_client().post(
+        f"/v1/authorizations/{authorization_id}/reverse", headers=API_HEADERS
+    )
     assert response.status_code == 200
     result = response.get_json()
     assert result["status"] == "reversed"
@@ -285,12 +297,15 @@ def test_account_balance_endpoint(app, session, card, company):
     accounts = _accounts_by_type(session, company.id)
     client = app.test_client()
 
-    holds = client.get(f"/v1/accounts/{accounts[AccountType.holds].id}/balance")
+    holds = client.get(
+        f"/v1/accounts/{accounts[AccountType.holds].id}/balance", headers=API_HEADERS
+    )
     assert holds.status_code == 200
     assert holds.get_json()["balance_cents"] == 5_000
 
     available = client.get(
-        f"/v1/accounts/{accounts[AccountType.available_credit].id}/balance"
+        f"/v1/accounts/{accounts[AccountType.available_credit].id}/balance",
+        headers=API_HEADERS,
     )
     assert available.get_json()["balance_cents"] == -5_000
 
@@ -306,16 +321,34 @@ def test_validation_errors(app, card):
     payload = _payload(card)
 
     missing = {k: v for k, v in payload.items() if k != "timestamp"}
-    assert client.post("/v1/authorizations", json=missing).status_code == 400
+    assert (
+        client.post("/v1/authorizations", json=missing, headers=API_HEADERS).status_code
+        == 400
+    )
 
     bad_amount = {**payload, "amount_cents": -5}
-    assert client.post("/v1/authorizations", json=bad_amount).status_code == 400
+    assert (
+        client.post(
+            "/v1/authorizations", json=bad_amount, headers=API_HEADERS
+        ).status_code
+        == 400
+    )
 
     bad_timestamp = {**payload, "timestamp": "not-a-date"}
-    assert client.post("/v1/authorizations", json=bad_timestamp).status_code == 400
+    assert (
+        client.post(
+            "/v1/authorizations", json=bad_timestamp, headers=API_HEADERS
+        ).status_code
+        == 400
+    )
 
     unknown_card = {**payload, "card_token": "card_missing"}
-    assert client.post("/v1/authorizations", json=unknown_card).status_code == 404
+    assert (
+        client.post(
+            "/v1/authorizations", json=unknown_card, headers=API_HEADERS
+        ).status_code
+        == 404
+    )
 
 
 def test_concurrent_identical_requests_single_hold(app, session, card):
@@ -324,7 +357,9 @@ def test_concurrent_identical_requests_single_hold(app, session, card):
 
     def worker(_):
         barrier.wait()
-        return app.test_client().post("/v1/authorizations", json=payload)
+        return app.test_client().post(
+            "/v1/authorizations", json=payload, headers=API_HEADERS
+        )
 
     with ThreadPoolExecutor(max_workers=20) as pool:
         responses = list(pool.map(worker, range(20)))

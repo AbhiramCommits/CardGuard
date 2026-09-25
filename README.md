@@ -71,7 +71,8 @@ Optional:
 make data      # generate the synthetic transaction dataset
 make train     # train the LightGBM model, write metrics + model card
 make loadtest  # k6 scenarios A/B (requires the stack up; k6 on PATH)
-make demo      # crash-durability demo (kills the worker mid-workflow)
+make demo      # end-to-end lifecycle demo
+make demo-crash  # crash-durability demo (kills the worker mid-workflow)
 ```
 
 ## API reference
@@ -123,11 +124,16 @@ The operating threshold minimizes false declines subject to catching at least 95
 fraud dollars on the held-out set; it catches 96.2% while declining 0.015% of good
 transactions.
 
-## Durability demo
+## Demos
 
 ```sh
-make demo
+make demo         # end-to-end lifecycle (scripts/demo.sh)
+make demo-crash   # crash-durability (scripts/demo_crash_recovery.sh)
 ```
+
+`make demo` runs the full lifecycle and prints the ledger state at each step:
+seed -> approve -> decline on policy -> review + reviewer signal -> capture -> hold
+expiry release via the durable timer.
 
 `scripts/demo_crash_recovery.sh` routes an authorization to `review`, kills the worker
 container mid-workflow (`docker compose kill worker`), restarts it, sends the approve
@@ -135,6 +141,11 @@ signal, and shows the workflow completing with exactly one hold posting in the l
 the workflow state lived in Temporal the whole time. The same behavior is covered by
 integration tests on Temporal's time-skipping test server (`tests/test_temporal.py`),
 including transient DB errors in activities, which retry and still post exactly once.
+
+Temporal UI: http://localhost:8080 — a review workflow waiting on a signal looks
+like this:
+
+![ReviewWorkflow waiting on a signal in the Temporal UI](docs/img/temporal-ui-review-workflow.png)
 
 ## Correctness harness
 
@@ -147,6 +158,42 @@ including transient DB errors in activities, which retry and still post exactly 
   `count(ledger_entry) == 2 * count(distinct authorization)` — zero duplicate postings.
 - `tests/test_ledger.py` covers the double-entry balance and idempotent replay of each
   posting function, and the DB-level unique constraint that makes duplicates fail loudly.
+
+## Observability
+
+- **Structured JSON logs everywhere** — a JSON formatter on the root logger (API and
+  worker) with `ts`, `level`, `logger`, `event`/`msg`, and `request_id`. The API reads
+  `X-Request-Id` (or generates one), echoes it on the response, and carries it
+  through the Temporal workflow into activity logs.
+- **Prometheus metrics at `/metrics`**:
+  - `cardguard_auth_decisions_total{decision,reason}`
+  - `cardguard_auth_latency_seconds` histogram
+  - `cardguard_ledger_postings_total{entry_type}`
+  - `cardguard_model_score` histogram
+  - `cardguard_workflow_starts_total{workflow}` /
+    `cardguard_workflow_completions_total{workflow,result}` (worker-side interceptor)
+  - `cardguard_activity_failures_total{activity,error}`
+- Operational playbook: `docs/runbook.md` (p99 breach, model load failure, worker
+  backlog, ledger invariant failure).
+
+## Security
+
+- API key auth on all `/v1/` routes (`X-Api-Key` against `CARDGUARD_API_KEYS`),
+  per-key sliding-window rate limiting (`CARDGUARD_RATE_LIMIT_PER_KEY`,
+  `CARDGUARD_RATE_LIMIT_WINDOW_SECONDS`), and a 16KB request body limit.
+- SQLAlchemy parameterized queries only (no string-interpolated SQL); `bandit` and
+  `pip-audit` run in CI.
+- No card numbers or PII are ever logged — only card tokens — enforced by a test
+  (`tests/test_security.py`) that scans captured logs for card-number-shaped values.
+
+## Deployment
+
+Terraform in `infra/` provisions the AWS stack (VPC, private encrypted RDS 16 with
+backups, ECS Fargate `api` behind an ALB + private `worker`, ECR, Secrets Manager,
+CloudWatch, least-privilege task roles) parameterized by environment (`dev`, `prod`
+tfvars). Temporal Cloud is the default prod configuration (mTLS via secrets), with a
+documented self-hosted fallback (the docker-compose Temporal stack). Cost notes and
+teardown instructions live in `infra/README.md`.
 
 ## Design decisions & tradeoffs
 

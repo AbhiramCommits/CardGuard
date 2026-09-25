@@ -5,6 +5,7 @@ from typing import Any
 import joblib  # type: ignore[import-untyped]
 import numpy as np
 
+from app.metrics import MODEL_SCORE
 from app.risk.features import FEATURE_NAMES, FEATURE_SCHEMA_VERSION
 from app.risk.policy import ReasonCode
 
@@ -85,7 +86,9 @@ class RiskModel:
             proba = self.predict_proba(vector)
             if proba is None:
                 return None
-            return float(proba[0])
+            value = float(proba[0])
+            MODEL_SCORE.observe(value)
+            return value
         except Exception:
             logger.exception("risk model scoring failed")
             return None

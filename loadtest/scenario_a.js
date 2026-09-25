@@ -6,6 +6,8 @@ const config = new SharedArray('config', function () {
   return JSON.parse(open('./results/loadtest-config.json', 'r')).cards;
 });
 
+const apiKey = JSON.parse(open('./results/loadtest-config.json', 'r')).api_key;
+
 const REPLAY_RATE = 0.0;
 
 export const options = {
@@ -37,7 +39,12 @@ export default async function () {
   const response = await post(
     'http://localhost:8000/v1/authorizations',
     JSON.stringify(payload),
-    { headers: { 'Content-Type': 'application/json' } },
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Key': apiKey,
+      },
+    },
   );
   if (response.status !== 200) {
     console.error(`unexpected status ${response.status}: ${response.body}`);

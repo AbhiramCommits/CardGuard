@@ -40,6 +40,7 @@ class ReviewWorkflow:
         self,
         authorization_id: int,
         timeout_seconds: int = DEFAULT_REVIEW_TIMEOUT_SECONDS,
+        request_id: str = "",
     ) -> str:
         try:
             async with asyncio.timeout(timeout_seconds):
@@ -49,7 +50,7 @@ class ReviewWorkflow:
             self._state.decision = "timeout"
             await workflow.execute_activity(
                 finalize_decline,
-                args=[authorization_id, "REVIEW_TIMEOUT", None, None],
+                args=[authorization_id, "REVIEW_TIMEOUT", None, None, request_id],
                 start_to_close_timeout=ACTIVITY_START_TO_CLOSE_TIMEOUT,
                 retry_policy=ACTIVITY_RETRY_POLICY,
             )
@@ -63,7 +64,7 @@ class ReviewWorkflow:
             self._state.decision = "approve"
             await workflow.execute_activity(
                 post_review_hold,
-                args=[authorization_id],
+                args=[authorization_id, request_id],
                 start_to_close_timeout=ACTIVITY_START_TO_CLOSE_TIMEOUT,
                 retry_policy=ACTIVITY_RETRY_POLICY,
             )
@@ -78,6 +79,7 @@ class ReviewWorkflow:
                 "REVIEW_DECLINED",
                 decision.reviewer_id,
                 decision.note,
+                request_id,
             ],
             start_to_close_timeout=ACTIVITY_START_TO_CLOSE_TIMEOUT,
             retry_policy=ACTIVITY_RETRY_POLICY,

@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.metrics import LEDGER_POSTINGS
 from app.models import (
     Account,
     AccountType,
@@ -129,6 +130,7 @@ def _post(
         )
         session.add(entry)
         entries.append(entry)
+    LEDGER_POSTINGS.labels(entry_type=entry_type.value).inc()
     if not commit:
         return PostingResult(
             posting_id=posting.id,

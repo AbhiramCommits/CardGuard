@@ -66,6 +66,11 @@ jobs:
           uv run ruff format --check app workflows tests loadtest scripts ml
           uv run mypy --strict app
 
+      - name: Security scan
+        run: |
+          uv run bandit -c pyproject.toml -r app workflows
+          uvx pip-audit
+
       - name: Test with coverage gate
         run: uv run pytest --cov=app --cov=workflows --cov-fail-under=80
 

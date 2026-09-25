@@ -1,9 +1,11 @@
 from flask import Blueprint, Response, current_app, jsonify
 
+from app.api.v1.auth import require_api_key
 from app.ledger import account_balance
 from app.models import Account
 
 bp = Blueprint("accounts_v1", __name__)
+bp.before_request(require_api_key)
 
 
 @bp.get("/<int:account_id>/balance")

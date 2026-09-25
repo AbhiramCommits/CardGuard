@@ -54,6 +54,8 @@ services:
       DATABASE_URL: postgresql+psycopg://cardguard:cardguard@postgres:5432/cardguard
       TEMPORAL_HOST: temporal:7233
       CARDGUARD_MODEL_PATH: ${CARDGUARD_MODEL_PATH:-ml/artifacts/model_v1.joblib}
+      CARDGUARD_API_KEYS: ${CARDGUARD_API_KEYS:-dev-key}
+      CARDGUARD_RATE_LIMIT_PER_KEY: ${CARDGUARD_RATE_LIMIT_PER_KEY:-600}
     ports:
       - "8000:8000"
     depends_on:

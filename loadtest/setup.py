@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 from sqlalchemy import delete, select
@@ -79,7 +80,10 @@ def main():
         {"name": name, "token": tokens[name]}
         for name in ("approve", "decline", "review")
     ]
-    CONFIG_PATH.write_text(json.dumps({"cards": cards}, indent=2) + "\n")
+    api_key = os.environ.get("CARDGUARD_API_KEYS", "dev-key").split(",")[0].strip()
+    CONFIG_PATH.write_text(
+        json.dumps({"cards": cards, "api_key": api_key}, indent=2) + "\n"
+    )
     print(f"loadtest config written to {CONFIG_PATH}")
 
 

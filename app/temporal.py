@@ -10,8 +10,9 @@ from typing import Any
 
 from temporalio.client import Client
 from temporalio.exceptions import WorkflowAlreadyStartedError
-from temporalio.service import RPCError, RPCStatusCode
+from temporalio.service import RPCError, RPCStatusCode, TLSConfig
 
+from app.metrics import WORKFLOW_STARTS
 from workflows import HoldExpiryWorkflow, ReviewWorkflow
 
 logger = logging.getLogger("cardguard")
@@ -19,6 +20,18 @@ logger = logging.getLogger("cardguard")
 TASK_QUEUE = os.environ.get("CARDGUARD_TASK_QUEUE", "cardguard-risk")
 DEFAULT_TEMPORAL_HOST = "localhost:7233"
 DEFAULT_TEMPORAL_NAMESPACE = "default"
+
+
+def _temporal_tls() -> TLSConfig | bool | None:
+    cert_path = os.environ.get("TEMPORAL_CLIENT_CERT")
+    key_path = os.environ.get("TEMPORAL_CLIENT_KEY")
+    if not cert_path or not key_path:
+        return None
+    with open(cert_path, "rb") as cert_file, open(key_path, "rb") as key_file:
+        return TLSConfig(
+            client_cert=cert_file.read(),
+            client_private_key=key_file.read(),
+        )
 
 
 class TemporalUnavailableError(RuntimeError):
@@ -60,7 +73,7 @@ def _ensure_client(timeout: float = 5.0) -> Client:
                 target=_loop.run_forever, daemon=True, name="cardguard-temporal"
             ).start()
         future: concurrent.futures.Future[Client] = asyncio.run_coroutine_threadsafe(
-            Client.connect(host, namespace=namespace), _loop
+            Client.connect(host, namespace=namespace, tls=_temporal_tls()), _loop
         )
         try:
             _client = future.result(timeout=timeout)
@@ -87,17 +100,18 @@ def _call(
 
 
 def start_review_workflow(
-    authorization_id: int, public_id: str, timeout_seconds: int
+    authorization_id: int, public_id: str, timeout_seconds: int, request_id: str
 ) -> bool:
     try:
         _call(
             lambda client: client.start_workflow(
                 ReviewWorkflow.run,
-                args=[authorization_id, timeout_seconds],
+                args=[authorization_id, timeout_seconds, request_id],
                 id=f"review-{public_id}",
                 task_queue=TASK_QUEUE,
             )
         )
+        WORKFLOW_STARTS.labels(workflow="review").inc()
         return True
     except WorkflowAlreadyStartedError:
         return True
@@ -111,17 +125,21 @@ def start_review_workflow(
 
 
 def start_hold_expiry_workflow(
-    authorization_id: int, public_id: str, expires_at_epoch: float
+    authorization_id: int,
+    public_id: str,
+    expires_at_epoch: float,
+    request_id: str,
 ) -> bool:
     try:
         _call(
             lambda client: client.start_workflow(
                 HoldExpiryWorkflow.run,
-                args=[authorization_id, expires_at_epoch],
+                args=[authorization_id, expires_at_epoch, request_id],
                 id=f"hold-expiry-{public_id}",
                 task_queue=TASK_QUEUE,
             )
         )
+        WORKFLOW_STARTS.labels(workflow="hold-expiry").inc()
         return True
     except WorkflowAlreadyStartedError:
         return True

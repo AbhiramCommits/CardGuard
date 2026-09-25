@@ -18,7 +18,7 @@ from app.models import (
     LedgerEntry,
     SpendPolicy,
 )
-from tests.test_authorization_api import _payload, _post, _postings
+from tests.test_authorization_api import API_HEADERS, _payload, _post, _postings
 from workflows import HoldExpiryWorkflow, ReviewWorkflow
 from workflows import activities as activities_module
 from workflows.activities import (
@@ -261,7 +261,8 @@ async def test_review_decision_endpoints(temporal, app, session, card):
 
     status = await asyncio.to_thread(
         lambda: app.test_client().get(
-            f"/v1/authorizations/{authorization_id}/review-status"
+            f"/v1/authorizations/{authorization_id}/review-status",
+            headers=API_HEADERS,
         )
     )
     assert status.status_code == 200
@@ -271,6 +272,7 @@ async def test_review_decision_endpoints(temporal, app, session, card):
         lambda: app.test_client().post(
             f"/v1/authorizations/{authorization_id}/review-decision",
             json={"decision": "approve", "reviewer_id": "bob", "note": "verified"},
+            headers=API_HEADERS,
         )
     )
     assert response.status_code == 202
@@ -280,7 +282,8 @@ async def test_review_decision_endpoints(temporal, app, session, card):
         state = (
             await asyncio.to_thread(
                 lambda: app.test_client().get(
-                    f"/v1/authorizations/{authorization_id}/review-status"
+                    f"/v1/authorizations/{authorization_id}/review-status",
+                    headers=API_HEADERS,
                 )
             )
         ).get_json()
@@ -301,7 +304,8 @@ async def test_review_decision_endpoints(temporal, app, session, card):
 async def test_review_status_unknown_workflow_404(temporal, app):
     response = await asyncio.to_thread(
         lambda: app.test_client().get(
-            f"/v1/authorizations/{uuid_module.uuid4()}/review-status"
+            f"/v1/authorizations/{uuid_module.uuid4()}/review-status",
+            headers=API_HEADERS,
         )
     )
     assert response.status_code == 404
@@ -312,6 +316,7 @@ async def test_review_decision_invalid_400(temporal, app):
         lambda: app.test_client().post(
             f"/v1/authorizations/{uuid_module.uuid4()}/review-decision",
             json={"decision": "maybe"},
+            headers=API_HEADERS,
         )
     )
     assert response.status_code == 400

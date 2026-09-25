@@ -2,14 +2,16 @@ import json
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from flask import Blueprint, Response, current_app, jsonify, request
 from sqlalchemy import BigInteger, case, cast, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.api.v1.auth import require_api_key
 from app.ledger import post_capture, post_hold, post_hold_release, post_reversal
+from app.metrics import AUTH_DECISIONS, AUTH_LATENCY
 from app.models import (
     Account,
     AccountType,
@@ -24,7 +26,7 @@ from app.models import (
     LedgerPosting,
     SpendPolicy,
 )
-from app.observability import StageTimer
+from app.observability import StageTimer, request_scope
 from app.risk.features import build_features
 from app.risk.model import risk_model
 from app.risk.policy import PolicyContext, ReasonCode, evaluate_policy
@@ -38,6 +40,7 @@ from app.temporal import (
 )
 
 bp = Blueprint("authorizations_v1", __name__)
+bp.before_request(require_api_key)
 
 HOLD_TTL_DAYS = 7
 HISTORY_LIMIT = 1000
@@ -145,6 +148,12 @@ def _log_and_return(
 
 @bp.post("")
 def create_authorization() -> Response | tuple[Response, int]:
+    request_id = request.headers.get("X-Request-Id") or uuid4().hex
+    with request_scope(request_id):
+        return _create_authorization(request_id)
+
+
+def _create_authorization(request_id: str) -> Response | tuple[Response, int]:
     timer = StageTimer("authorization_decision")
     with timer.stage("request_parse"):
         payload = request.get_json(silent=True) or {}
@@ -337,6 +346,7 @@ def create_authorization() -> Response | tuple[Response, int]:
                 authorization.id,
                 str(authorization.public_id),
                 current_app.config["REVIEW_TIMEOUT_SECONDS"],
+                request_id,
             )
         elif final_decision == "approve":
             expires_at = authorization.expires_at
@@ -345,8 +355,13 @@ def create_authorization() -> Response | tuple[Response, int]:
                 authorization.id,
                 str(authorization.public_id),
                 expires_at.timestamp(),
+                request_id,
             )
-        return _log_and_return(timer, jsonify(response_body), 200)
+        AUTH_DECISIONS.labels(decision=final_decision, reason=final_reason).inc()
+        AUTH_LATENCY.observe(timer.elapsed_ms() / 1000.0)
+        response = jsonify(response_body)
+        response.headers["X-Request-Id"] = request_id
+        return _log_and_return(timer, response, 200)
 
 
 @bp.post("/<uuid:authorization_id>/capture")

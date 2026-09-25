@@ -13,3 +13,7 @@ ml/artifacts/*.joblib
 ml/data/
 ml/artifacts/*.joblib
 loadtest/results/loadtest-config.json
+infra/**/.terraform/
+infra/**/*.tfstate*
+infra/**/terraform.tfvars
+infra/**/.terraform.lock.hcl

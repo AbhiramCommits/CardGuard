@@ -7,6 +7,8 @@ const config = new SharedArray('config', function () {
   return JSON.parse(open('./results/loadtest-config.json', 'r')).cards;
 });
 
+const apiKey = JSON.parse(open('./results/loadtest-config.json', 'r')).api_key;
+
 const REPLAY_RATE = 0.2;
 const replays = new Counter('idempotent_replays');
 
@@ -39,7 +41,12 @@ export default async function () {
   const response = await post(
     'http://localhost:8000/v1/authorizations',
     JSON.stringify(payload),
-    { headers: { 'Content-Type': 'application/json' } },
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Key': apiKey,
+      },
+    },
   );
   if (response.headers['Idempotent-Replay'] === 'true') {
     replays.add(1);

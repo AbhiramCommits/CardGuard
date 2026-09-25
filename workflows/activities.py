@@ -1,3 +1,4 @@
+import logging
 import os
 import threading
 from datetime import timedelta
@@ -9,6 +10,7 @@ from app.config import Config
 from app.db import make_engine, make_session_factory
 from app.ledger import post_hold, post_hold_release
 from app.models import Authorization, AuthorizationStatus
+from app.observability import request_scope
 
 
 class ValidationError(Exception):
@@ -58,8 +60,17 @@ def _get_authorization(session, authorization_id):
     return authorization
 
 
+logger = logging.getLogger("cardguard.activities")
+
+
 @activity.defn
-async def post_review_hold(authorization_id: int) -> str:
+async def post_review_hold(authorization_id: int, request_id: str = "") -> str:
+    with request_scope(request_id):
+        logger.info("posting review hold", extra={"authorization_id": authorization_id})
+        return await _post_review_hold(authorization_id)
+
+
+async def _post_review_hold(authorization_id: int) -> str:
     _maybe_fail()
     session = _get_session()
     try:
@@ -87,6 +98,21 @@ async def post_review_hold(authorization_id: int) -> str:
 
 @activity.defn
 async def finalize_decline(
+    authorization_id: int,
+    reason: str,
+    reviewer_id: str | None,
+    note: str | None,
+    request_id: str = "",
+) -> str:
+    with request_scope(request_id):
+        logger.info(
+            "finalizing review decline",
+            extra={"authorization_id": authorization_id, "reason": reason},
+        )
+        return await _finalize_decline(authorization_id, reason, reviewer_id, note)
+
+
+async def _finalize_decline(
     authorization_id: int, reason: str, reviewer_id: str | None, note: str | None
 ) -> str:
     _maybe_fail()
@@ -102,7 +128,15 @@ async def finalize_decline(
 
 
 @activity.defn
-async def release_expired_hold(authorization_id: int) -> str:
+async def release_expired_hold(authorization_id: int, request_id: str = "") -> str:
+    with request_scope(request_id):
+        logger.info(
+            "releasing expired hold", extra={"authorization_id": authorization_id}
+        )
+        return await _release_expired_hold(authorization_id)
+
+
+async def _release_expired_hold(authorization_id: int) -> str:
     _maybe_fail()
     session = _get_session()
     try:
