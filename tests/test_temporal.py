@@ -9,6 +9,7 @@ from sqlalchemy import select
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Worker
 
+import app.temporal as app_temporal
 from app.config import TestingConfig
 from app.ledger import post_capture, post_hold
 from app.models import (
@@ -32,6 +33,15 @@ TASK_QUEUE = "cardguard-risk"
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", TestingConfig.DATABASE_URL)
 
 
+def _reset_app_temporal_client():
+    # The app caches one Temporal client per process. Earlier tests may have
+    # connected it to TEMPORAL_HOST (a real server on CI), which has no worker
+    # for our task queue, so drop it whenever the target server changes.
+    app_temporal._client = None
+    app_temporal._last_connect_host = None
+    app_temporal._last_connect_attempt = 0.0
+
+
 def _ephemeral_target(env):
     server = vars(env).get("_server")
     if server is None:
@@ -44,6 +54,7 @@ async def temporal():
     os.environ["DATABASE_URL"] = TEST_DATABASE_URL
     env = await WorkflowEnvironment.start_time_skipping()
     os.environ["TEMPORAL_HOST"] = _ephemeral_target(env)
+    _reset_app_temporal_client()
     async with Worker(
         env.client,
         task_queue=TASK_QUEUE,
@@ -52,6 +63,7 @@ async def temporal():
     ):
         yield env
     await env.shutdown()
+    _reset_app_temporal_client()
 
 
 def _review_authorization(session, card, amount_cents=10_000):
